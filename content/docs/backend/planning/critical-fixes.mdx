@@ -1,0 +1,221 @@
+---
+title: Critical Fixes Required
+description: Critical fixes that must be addressed immediately for system stability
+---
+
+# Critical Fixes Required
+
+## Overview
+
+This document lists all critical fixes that must be addressed immediately to ensure system stability, data consistency, and proper functionality.
+
+**Last Updated**: 2025-01-24  
+**Priority**: 🔴 CRITICAL
+
+---
+
+## 🔴 P0 - Critical (Fix Immediately)
+
+### 1. ExperienceInteraction → UserEvent Creation Missing
+
+**Issue**: Experience interactions don't create UserEvent records, breaking feedback loop  
+**Severity**: 🔴 CRITICAL  
+**Impact**: Recommendations don't improve from user interactions  
+**Location**: `experience_app/views.py:track_interaction()`
+
+**Current Code**:
+```python
+# In ExperienceViewSet.track_interaction()
+interaction = serializer.save(user=user)
+
+# Update Redis state
+redis_state.increment_item_click_count(interaction.item_id)
+# ❌ Missing: UserEvent creation
+```
+
+**Required Fix**:
+```python
+# After creating ExperienceInteraction
+if interaction.interaction_type in ['click', 'view']:
+    from recommendation_engine.services import EventIngestionService
+    
+    EventIngestionService.ingest_event(
+        user=user,
+        event_type='click' if interaction.interaction_type == 'click' else 'open',
+        item_id=interaction.item_id,
+        item_type='newsletter',
+        app_section=render.page if render else 'unknown',
+        session_id=session_id,
+        metadata={
+            'section_type': interaction.section_type,
+            'position': interaction.position,
+            'dwell_time': interaction.dwell_time
+        }
+    )
+```
+
+**Files to Modify**:
+- `inbo-backend-django/experience_app/views.py`
+
+**Testing Required**:
+- Verify UserEvent created when ExperienceInteraction created
+- Verify feature updates triggered
+- Verify recommendations improve after interactions
+
+---
+
+### 2. Placeholder Code in Production
+
+**Issue**: Placeholder code in critical scoring paths  
+**Severity**: 🔴 CRITICAL  
+**Impact**: Incorrect scoring, poor recommendations  
+**Locations**: Multiple
+
+See [Architecture Review](/docs/backend/planning/architecture-review#13-placeholder-code-in-production) for detailed locations and fixes.
+
+**Files to Modify**:
+- `inbo-backend-django/experience_app/scoring.py`
+- `inbo-backend-django/experience_app/orchestrator.py`
+
+---
+
+### 3. Missing Error Handling
+
+**Issue**: Generic exception handling masks real issues  
+**Severity**: 🔴 CRITICAL  
+**Impact**: Silent failures, difficult debugging
+
+**Required Fix**: Replace generic exception handling with specific error types.
+
+**Files to Modify**:
+- `inbo-backend-django/experience_app/orchestrator.py`
+- `inbo-backend-django/experience_app/scoring.py`
+- `inbo-backend-django/experience_app/views.py`
+
+---
+
+### 4. Data Consistency Issues
+
+**Issue**: Redis counters and ItemFeature may drift  
+**Severity**: 🔴 CRITICAL  
+**Impact**: Incorrect popularity scores, wrong recommendations
+
+**Required Fix**: Implement reconciliation task, data validation, and backup mechanism.
+
+**Files to Modify**:
+- `inbo-backend-django/experience_app/tasks.py`
+
+---
+
+## 🟠 P1 - High Priority (Fix Soon)
+
+### 5. Missing Redis Caching for Recommendations
+
+**Issue**: Recommendations not cached, causing performance issues  
+**Severity**: 🟠 HIGH  
+**Impact**: Slow API responses, high database load
+
+**Files to Modify**:
+- `inbo-backend-django/recommendation_engine/views.py`
+- `inbo-backend-django/recommendation_engine/services.py`
+
+---
+
+### 6. Inefficient Database Queries
+
+**Issue**: N+1 queries in Experience App  
+**Severity**: 🟠 HIGH  
+**Impact**: Slow response times
+
+**Files to Modify**:
+- `inbo-backend-django/experience_app/orchestrator.py`
+
+---
+
+### 7. Missing Retry Mechanism for Search Indexing
+
+**Issue**: Failed indexing attempts are lost  
+**Severity**: 🟠 HIGH  
+**Impact**: Search results incomplete
+
+**Files to Modify**:
+- `inbo-backend-django/search_app/signals.py`
+- `inbo-backend-django/search_app/tasks.py` (new file)
+
+---
+
+## 🟡 P2 - Medium Priority (Fix When Possible)
+
+### 8. Standardize Redis Key Naming
+
+**Issue**: Inconsistent Redis key patterns  
+**Severity**: 🟡 MEDIUM
+
+**Files to Modify**: All Redis usage across services
+
+---
+
+### 9. Add Monitoring and Alerting
+
+**Issue**: No monitoring for service health  
+**Severity**: 🟡 MEDIUM
+
+**Required**: Health check endpoints, metrics collection, alerting
+
+---
+
+### 10. Consolidate Duplicate Documentation
+
+**Issue**: Multiple sources of truth  
+**Severity**: 🟡 MEDIUM
+
+**Required**: Consolidate all architecture docs into `project-documentation`
+
+---
+
+## Testing Requirements
+
+All fixes must include:
+
+1. **Unit Tests**: Test the specific fix
+2. **Integration Tests**: Test service integration
+3. **Performance Tests**: Ensure no performance regression
+4. **Manual Testing**: Verify in staging environment
+
+---
+
+## Deployment Checklist
+
+Before deploying fixes:
+
+- [ ] All tests passing
+- [ ] Code review completed
+- [ ] Documentation updated
+- [ ] Migration scripts ready (if needed)
+- [ ] Rollback plan prepared
+- [ ] Monitoring in place
+
+---
+
+## Priority Summary
+
+| Priority | Count | Status |
+|----------|-------|--------|
+| 🔴 P0 - Critical | 4 | Must fix immediately |
+| 🟠 P1 - High | 3 | Fix within 1 week |
+| 🟡 P2 - Medium | 3 | Fix within 1 month |
+
+**Total Critical Issues**: 10
+
+---
+
+## Related Documentation
+
+- [Architecture Review](/docs/backend/planning/architecture-review) - Detailed analysis
+- [Backlog](/docs/backend/planning/backlog) - Complete task list
+- [Roadmap](/docs/backend/planning/roadmap) - Development roadmap
+
+---
+
+**Last Updated**: 2025-01-24  
+**Next Review**: After P0 fixes deployed
