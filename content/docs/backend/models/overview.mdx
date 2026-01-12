@@ -482,6 +482,123 @@ python manage.py migrate
 python manage.py showmigrations
 ```
 
+## Common Query Patterns
+
+### User Queries
+
+```python
+from core.models import User, Email, Folder
+
+# Get user with related data
+user = User.objects.select_related('subscription_plan').prefetch_related(
+    'emails', 'folders', 'devices'
+).get(email='user@example.com')
+
+# Get user's unread emails
+unread_emails = Email.objects.filter(
+    user=user,
+    is_read=False
+).order_by('-date_received')
+
+# Get user's reading streak
+user = User.objects.get(email='user@example.com')
+current_streak = user.streak_count
+longest_streak = user.longest_streak
+```
+
+### Email Queries
+
+```python
+from core.models import Email, Folder
+
+# Get emails in folder
+folder_emails = Email.objects.filter(
+    user=user,
+    folder__name='Work'
+).select_related('folder')
+
+# Get favorite emails
+favorites = Email.objects.filter(
+    user=user,
+    is_favorite=True
+).order_by('-date_received')
+
+# Get emails by date range
+from django.utils import timezone
+from datetime import timedelta
+
+week_ago = timezone.now() - timedelta(days=7)
+recent_emails = Email.objects.filter(
+    user=user,
+    date_received__gte=week_ago
+)
+
+# Get unread count
+unread_count = Email.objects.filter(
+    user=user,
+    is_read=False
+).count()
+```
+
+### Newsletter Queries
+
+```python
+from core.models import Newsletter, NewsletterEmail
+
+# Get user's newsletters
+newsletters = Newsletter.objects.filter(
+    user=user,
+    is_accepted=True
+).prefetch_related('emails')
+
+# Get newsletter with email count
+newsletter = Newsletter.objects.annotate(
+    email_count=models.Count('emails')
+).get(id=newsletter_id)
+```
+
+### Folder Queries
+
+```python
+from core.models import Folder
+
+# Get folders with email counts
+folders = Folder.objects.filter(
+    user=user
+).annotate(
+    email_count=models.Count('emails')
+).order_by('name')
+
+# Search folder by name
+folders = Folder.objects.filter(
+    user=user,
+    name__icontains='work'
+)
+```
+
+### Aggregation Queries
+
+```python
+from django.db.models import Count, Sum, Avg
+from core.models import Email, ReadingStats
+
+# Get email statistics
+stats = Email.objects.filter(user=user).aggregate(
+    total=Count('id'),
+    unread=Count('id', filter=models.Q(is_read=False)),
+    favorites=Count('id', filter=models.Q(is_favorite=True))
+)
+
+# Get reading statistics
+reading_stats = ReadingStats.objects.filter(
+    user=user
+).aggregate(
+    total_time=Sum('time_spent'),
+    total_words=Sum('words_read'),
+    avg_time=Avg('time_spent')
+)
+```
+
 ## Database Optimization
 
 ### Query Optimization
@@ -490,11 +607,32 @@ python manage.py showmigrations
 - Use `only()` and `defer()` to limit fields
 - Use `annotate()` and `aggregate()` for calculations
 
+**Example**:
+```python
+# Efficient: Uses select_related
+emails = Email.objects.select_related('user', 'folder').all()
+
+# Efficient: Uses prefetch_related for M2M
+providers = NewsletterProvider.objects.prefetch_related('categories', 'tags').all()
+
+# Efficient: Only fetch needed fields
+users = User.objects.only('id', 'email', 'name').all()
+```
+
 ### Indexing Strategy
 - Index frequently queried fields
 - Index foreign keys
 - Create composite indexes for common query patterns
 - Monitor slow queries and add indexes as needed
+
+**Current Indexes**:
+- `User.email` - Unique index
+- `User.inbox_username` - Unique index
+- `User.created_at` - Index for sorting
+- `Email.user_id` - Foreign key index
+- `Email.date_received` - Index for sorting
+- `Email.folder_id` - Foreign key index
+- Composite: `(Email.user_id, Email.date_received)` - For user email queries
 
 ## Next Steps
 

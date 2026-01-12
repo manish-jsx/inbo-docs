@@ -345,9 +345,178 @@ Toggle newsletter subscription.
 }
 ```
 
+#### POST `/api/user/newsletter/subscribe/`
+Subscribe to a newsletter.
+
+**Request Body**:
+```json
+{
+  "newsletterId": "..."
+}
+```
+
+#### POST `/api/user/newsletter/unsubscribe/`
+Unsubscribe from a newsletter.
+
+**Request Body**:
+```json
+{
+  "newsletterId": "..."
+}
+```
+
+### Additional User Endpoints
+
+#### GET `/api/user/is-verified/`
+Check if user is verified.
+
+**Response** (200):
+```json
+{
+  "isVerified": true
+}
+```
+
+#### GET `/api/user/get-suggested-usernames/`
+Get suggested usernames for inbox creation.
+
+**Query Parameters**:
+- `base` (optional): Base username for suggestions
+
+**Response** (200):
+```json
+{
+  "suggestions": ["johndoe", "johndoe1", "johndoe2"]
+}
+```
+
+#### GET `/api/user/inbox-emails-count/`
+Get count of inbox emails.
+
+**Response** (200):
+```json
+{
+  "count": 100,
+  "unread": 10
+}
+```
+
+#### GET `/api/user/storage-info/`
+Get storage information.
+
+**Response** (200):
+```json
+{
+  "used": 1024,
+  "limit": 5120,
+  "percentage": 20,
+  "unit": "MB"
+}
+```
+
+#### GET `/api/user/summary-usage/`
+Get AI summary usage statistics.
+
+**Response** (200):
+```json
+{
+  "total": 50,
+  "remaining": 450,
+  "limit": 500
+}
+```
+
+#### GET `/api/user/streak-count/`
+Get reading streak count.
+
+**Response** (200):
+```json
+{
+  "streak": 7,
+  "longestStreak": 30
+}
+```
+
+#### GET `/api/user/time-range-stats/`
+Get reading statistics for a time range.
+
+**Query Parameters**:
+- `start_date` (required): Start date (YYYY-MM-DD)
+- `end_date` (required): End date (YYYY-MM-DD)
+
+**Response** (200):
+```json
+{
+  "totalTime": 3600,
+  "totalWords": 50000,
+  "emailsRead": 25,
+  "averageTimePerEmail": 144
+}
+```
+
+#### GET `/api/user/global-stats/`
+Get global reading statistics.
+
+**Response** (200):
+```json
+{
+  "totalTime": 7200,
+  "totalWords": 100000,
+  "totalEmails": 150,
+  "averageTimePerEmail": 48
+}
+```
+
+#### GET `/api/user/all-highlights/`
+Get all email highlights.
+
+**Response** (200):
+```json
+{
+  "highlights": [
+    {
+      "id": "...",
+      "emailId": "...",
+      "text": "Highlighted text",
+      "note": "User note",
+      "createdAt": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+#### PATCH `/api/user/email-address/`
+Change user email address.
+
+**Request Body**:
+```json
+{
+  "newEmail": "newemail@example.com"
+}
+```
+
+#### GET `/api/user/folder/search/`
+Search folder names.
+
+**Query Parameters**:
+- `q` (required): Search query
+
+**Response** (200):
+```json
+{
+  "folders": [
+    {
+      "id": "...",
+      "name": "Work",
+      "emailCount": 25
+    }
+  ]
+}
+```
+
 ### Analytics & Insights
 
-#### GET `/api/user/reading-insights/`
+#### GET `/api/user/analytics/reading-insights/`
 Get reading insights and achievements.
 
 **Response** (200):
@@ -365,6 +534,133 @@ Get reading insights and achievements.
   }
 }
 ```
+
+#### GET `/api/user/analytics/inbox-snapshot/`
+Get inbox snapshot statistics.
+
+**Response** (200):
+```json
+{
+  "totalEmails": 100,
+  "unread": 10,
+  "favorites": 5,
+  "readLater": 3,
+  "recentActivity": [...]
+}
+```
+
+#### GET `/api/user/analytics/similar-newsletters/`
+Get similar newsletters based on user preferences.
+
+**Response** (200):
+```json
+{
+  "newsletters": [
+    {
+      "id": "...",
+      "name": "Tech Weekly",
+      "similarity": 0.85
+    }
+  ]
+}
+```
+
+#### GET `/api/user/analytics/achievements/`
+Get user achievements.
+
+**Response** (200):
+```json
+{
+  "achievements": [
+    {
+      "id": "...",
+      "name": "7 Day Streak",
+      "description": "Read for 7 days in a row",
+      "unlockedAt": "2024-01-07T00:00:00Z"
+    }
+  ]
+}
+```
+
+### Notifications
+
+#### POST `/api/user/notification/register/`
+Register notification token.
+
+**Request Body**:
+```json
+{
+  "token": "fcm-token-here",
+  "deviceId": "device-uuid"
+}
+```
+
+#### POST `/api/user/notification/send/`
+Send notification (admin only).
+
+**Request Body**:
+```json
+{
+  "userId": "...",
+  "title": "Notification Title",
+  "body": "Notification body",
+  "data": {}
+}
+```
+
+### Feedback
+
+#### POST `/api/user/feedback/`
+Submit user feedback.
+
+**Request Body**:
+```json
+{
+  "subject": "Feedback subject",
+  "message": "Feedback message",
+  "type": "bug" // bug, feature, other
+}
+```
+
+### Directory (User-scoped)
+
+#### GET `/api/user/directory/search-newsletters-preview/`
+Search newsletters preview (user-scoped).
+
+**Query Parameters**:
+- `q` (required): Search query
+
+#### GET `/api/user/directory/search-newsletters/`
+Search newsletters (user-scoped).
+
+**Query Parameters**:
+- `q` (required): Search query
+
+#### GET `/api/user/directory/search-categories-preview/`
+Search categories preview (user-scoped).
+
+**Query Parameters**:
+- `q` (required): Search query
+
+#### GET `/api/user/directory/search-categories/`
+Search categories (user-scoped).
+
+**Query Parameters**:
+- `q` (required): Search query
+
+#### GET `/api/user/directory/search-category-newsletters-preview/`
+Search category newsletters preview (user-scoped).
+
+**Query Parameters**:
+- `categoryId` (required): Category ID
+- `q` (optional): Search query
+
+#### GET `/api/user/directory/search-category-newsletters/`
+Search category newsletters (user-scoped).
+
+**Query Parameters**:
+- `categoryId` (required): Category ID
+- `q` (optional): Search query
 
 ## Data Models
 

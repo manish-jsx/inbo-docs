@@ -14,6 +14,19 @@ Production: https://inbo-django-api.azurewebsites.net
 Development: http://localhost:8000
 ```
 
+## API Versioning
+
+**Important**: The INBO Backend API does **not** use version prefixes in the URL path (e.g., `/api/v1/`). All endpoints are accessed directly under `/api/`.
+
+**Exception**: The Newsletter Profile API (`/api/newsletter-profile/`) uses a `/v1/` prefix for its ViewSet endpoints:
+- `/api/newsletter-profile/v1/profiles/`
+- `/api/newsletter-profile/v1/preferences/`
+- `/api/newsletter-profile/v1/posts/`
+
+**Note for Frontend Developers**: If your frontend code expects `/api/v1/` prefix, you'll need to either:
+1. Update your frontend base URL to use `/api/` instead of `/api/v1/`
+2. Or configure a reverse proxy/URL rewrite to add the `/v1/` prefix
+
 ## Authentication
 
 Most endpoints require JWT authentication. Include the access token in the Authorization header:
@@ -24,18 +37,53 @@ Authorization: Bearer <access_token>
 
 ### Getting Tokens
 
-1. **Send OTP**: `POST /api/auth/otp/send/`
-2. **Verify OTP**: `POST /api/auth/otp/verify/`
-3. **Get Tokens**: `POST /api/auth/token/`
+1. **Send OTP**: `POST /api/auth/send-otp/`
+2. **Verify OTP**: `POST /api/auth/verify-otp/` (returns access and refresh tokens)
+3. **Refresh Token**: `POST /api/auth/refresh/`
+
+### Authentication Flow
+
+```http
+# Step 1: Send OTP
+POST /api/auth/send-otp/
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+```http
+# Step 2: Verify OTP and get tokens
+POST /api/auth/verify-otp/
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "otp": "123456"
+}
+
+# Response:
+{
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "user": { ... }
+}
+```
 
 ### Token Refresh
 
 ```http
-POST /api/auth/token/refresh/
+POST /api/auth/refresh/
 Content-Type: application/json
 
 {
   "refresh": "<refresh_token>"
+}
+
+# Response:
+{
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGc..."
 }
 ```
 
@@ -43,27 +91,76 @@ Content-Type: application/json
 
 ### Authentication (`/api/auth/`)
 
-- `POST /api/auth/otp/send/` - Send OTP email
-- `POST /api/auth/otp/verify/` - Verify OTP
-- `POST /api/auth/token/` - Get JWT tokens
-- `POST /api/auth/token/refresh/` - Refresh access token
-- `POST /api/auth/device/register/` - Register device
+- `POST /api/auth/send-otp/` - Send OTP email
+- `POST /api/auth/verify-otp/` - Verify OTP and get JWT tokens
+- `POST /api/auth/refresh/` - Refresh access token
+- `POST /api/auth/logout/` - Logout (invalidate tokens)
+- `POST /api/auth/validate-session/` - Validate current session
+- `POST /api/auth/check-email/` - Check if email exists
 
 ### User Management (`/api/user/`)
 
+#### Profile & Verification
 - `GET /api/user/profile/` - Get user profile
-- `PUT /api/user/profile/` - Update profile
+- `PATCH /api/user/profile/` - Update profile
 - `GET /api/user/complete-data/` - Get complete user data
 - `GET /api/user/is-verified/` - Check verification status
+
+#### Onboarding
 - `POST /api/user/onboarding/` - Complete onboarding
 - `GET /api/user/onboarding/status/` - Check onboarding status
+
+#### Inbox Management
 - `POST /api/user/create-inbox/` - Create @inbo.me inbox
 - `GET /api/user/check-inbox-availability/` - Check username availability
-- `GET /api/user/dashboard-data/` - Get dashboard data
+- `GET /api/user/get-suggested-usernames/` - Get suggested usernames
 - `GET /api/user/inbox-accounts/` - Get inbox accounts
-- `GET /api/user/folders/` - Get folders
-- `POST /api/user/folder/<name>/` - Create folder
-- `DELETE /api/user/folder/<name>/` - Delete folder
+- `GET /api/user/inbox-emails-count/` - Get inbox emails count
+
+#### Dashboard & Statistics
+- `GET /api/user/dashboard-data/` - Get dashboard data
+- `GET /api/user/storage-info/` - Get storage information
+- `GET /api/user/summary-usage/` - Get AI summary usage
+- `GET /api/user/streak-count/` - Get reading streak count
+- `GET /api/user/time-range-stats/` - Get time range statistics
+- `GET /api/user/global-stats/` - Get global statistics
+
+#### Folders
+- `GET /api/user/folders/` - Get all folders
+- `POST /api/user/folder/<folder_name>/` - Create folder
+- `DELETE /api/user/folder/<folder_name>/` - Delete folder
+- `GET /api/user/folder/search/` - Search folder names
+
+#### Email Management
+- `PATCH /api/user/email-address/` - Change email address
+- `GET /api/user/all-highlights/` - Get all email highlights
+
+#### Subscriptions
+- `GET /api/user/subscriptions/` - Get user subscriptions
+- `PATCH /api/user/toggle-subscription/` - Toggle subscription status
+- `POST /api/user/newsletter/subscribe/` - Subscribe to newsletter
+- `POST /api/user/newsletter/unsubscribe/` - Unsubscribe from newsletter
+
+#### Analytics
+- `GET /api/user/analytics/reading-insights/` - Get reading insights
+- `GET /api/user/analytics/inbox-snapshot/` - Get inbox snapshot
+- `GET /api/user/analytics/similar-newsletters/` - Get similar newsletters
+- `GET /api/user/analytics/achievements/` - Get user achievements
+
+#### Notifications
+- `POST /api/user/notification/register/` - Register notification token
+- `POST /api/user/notification/send/` - Send notification (admin)
+
+#### Feedback
+- `POST /api/user/feedback/` - Submit user feedback
+
+#### Directory (User-scoped)
+- `GET /api/user/directory/search-newsletters-preview/` - Search newsletters preview
+- `GET /api/user/directory/search-newsletters/` - Search newsletters
+- `GET /api/user/directory/search-categories-preview/` - Search categories preview
+- `GET /api/user/directory/search-categories/` - Search categories
+- `GET /api/user/directory/search-category-newsletters-preview/` - Search category newsletters preview
+- `GET /api/user/directory/search-category-newsletters/` - Search category newsletters
 
 ### Email Operations (`/api/email/`)
 
@@ -90,85 +187,139 @@ Content-Type: application/json
 
 ### Reading Statistics (`/api/reading/`)
 
-- `GET /api/reading/stats/` - Get reading statistics
+#### Reading Logs
+- `POST /api/reading/logs/` - Create reading log
+- `GET /api/reading/logs/` - Get reading logs
+- `GET /api/reading/logs/range/` - Get reading logs by date range
+- `GET /api/reading/statistics/` - Get reading statistics
+
+#### Streaks
+- `POST /api/reading/streak/increment/` - Increment reading streak
 - `GET /api/reading/streak/` - Get streak information
-- `PUT /api/reading/progress/` - Update reading progress
-- `GET /api/reading/time-range-stats/` - Get time range statistics
-- `GET /api/reading/global-stats/` - Get global statistics
 
 ### Newsletter Directory (`/api/directory/`)
 
-- `GET /api/directory/providers/` - List/search providers
-- `GET /api/directory/providers/<id>/` - Get provider details
-- `GET /api/directory/categories/` - List categories
-- `GET /api/directory/categories/<id>/` - Get category details
-- `GET /api/directory/categories/<id>/providers/` - Get providers in category
+- `GET /api/directory/search/` - Search newsletters
+- `GET /api/directory/categories/` - List all categories
+- `GET /api/directory/recommendations/` - Get newsletter recommendations
+- `GET /api/directory/search-newsletters-preview/` - Search newsletters preview
+- `GET /api/directory/search-categories-preview/` - Search categories preview
+- `GET /api/directory/search-category-newsletters-preview/` - Search category newsletters preview
+- `GET /api/directory/<id>/` - Get newsletter provider details
 
-### Newsletter Profile (`/api/newsletter-profile/`)
+### Newsletter Profile (`/api/newsletter-profile/v1/`)
 
-- `GET /api/newsletter-profile/profile/` - Get profile
-- `PUT /api/newsletter-profile/profile/` - Update profile
-- `GET /api/newsletter-profile/preferences/` - Get preferences
-- `POST /api/newsletter-profile/preferences/` - Create preference
-- `PUT /api/newsletter-profile/preferences/<id>/` - Update preference
-- `DELETE /api/newsletter-profile/preferences/<id>/` - Delete preference
-- `GET /api/newsletter-profile/posts/` - Get posts
-- `GET /api/newsletter-profile/posts/<id>/` - Get post details
+**Note**: This API uses version prefix `/v1/` and ViewSets.
+
+#### Profiles (ViewSet)
+- `GET /api/newsletter-profile/v1/profiles/` - List profiles
+- `GET /api/newsletter-profile/v1/profiles/<id>/` - Get profile details
+- `POST /api/newsletter-profile/v1/profiles/` - Create profile
+- `PUT /api/newsletter-profile/v1/profiles/<id>/` - Update profile
+- `PATCH /api/newsletter-profile/v1/profiles/<id>/` - Partial update
+- `DELETE /api/newsletter-profile/v1/profiles/<id>/` - Delete profile
+
+#### Preferences (ViewSet)
+- `GET /api/newsletter-profile/v1/preferences/` - List preferences
+- `GET /api/newsletter-profile/v1/preferences/<id>/` - Get preference details
+- `POST /api/newsletter-profile/v1/preferences/` - Create preference
+- `PUT /api/newsletter-profile/v1/preferences/<id>/` - Update preference
+- `PATCH /api/newsletter-profile/v1/preferences/<id>/` - Partial update
+- `DELETE /api/newsletter-profile/v1/preferences/<id>/` - Delete preference
+
+#### Posts (ViewSet)
+- `GET /api/newsletter-profile/v1/posts/` - List posts
+- `GET /api/newsletter-profile/v1/posts/<id>/` - Get post details
+- `POST /api/newsletter-profile/v1/posts/` - Create post
+- `PUT /api/newsletter-profile/v1/posts/<id>/` - Update post
+- `PATCH /api/newsletter-profile/v1/posts/<id>/` - Partial update
+- `DELETE /api/newsletter-profile/v1/posts/<id>/` - Delete post
 
 ### Search (`/api/search/`)
 
-- `GET /api/search/unified/` - Unified search across all types
-- `GET /api/search/providers/` - Search newsletter providers
-- `GET /api/search/emails/` - Search emails
-- `GET /api/search/posts/` - Search newsletter posts
+**Note**: Search uses ViewSets with standard REST actions.
 
-**Query Parameters**:
+#### Unified Search (ViewSet)
+- `GET /api/search/unified/` - Unified search across all types
+- `POST /api/search/unified/` - Advanced unified search
+
+#### Provider Search (ViewSet)
+- `GET /api/search/providers/` - Search newsletter providers
+- `POST /api/search/providers/` - Advanced provider search
+
+#### Email Search (ViewSet)
+- `GET /api/search/emails/` - Search emails
+- `POST /api/search/emails/` - Advanced email search
+
+#### Post Search (ViewSet)
+- `GET /api/search/posts/` - Search newsletter posts
+- `POST /api/search/posts/` - Advanced post search
+
+**Query Parameters** (for GET requests):
 - `q` - Search query (required)
 - `page` - Page number (default: 1)
 - `page_size` - Results per page (default: 20)
-- `types` - Content types (for unified search)
+- `types` - Content types (for unified search: `emails`, `posts`, `providers`)
 
 ### Recommendations (`/api/recommendation/`)
 
-- `POST /api/recommendation/events/` - Track user event
-- `GET /api/recommendation/events/` - Get user events
-- `GET /api/recommendation/recommendations/` - Get recommendations
+**Note**: Uses ViewSets with standard REST actions.
 
-**Query Parameters**:
+#### Events (ViewSet)
+- `GET /api/recommendation/events/` - List user events
+- `POST /api/recommendation/events/` - Track user event
+- `GET /api/recommendation/events/<id>/` - Get event details
+- `PUT /api/recommendation/events/<id>/` - Update event
+- `DELETE /api/recommendation/events/<id>/` - Delete event
+
+#### Recommendations (ViewSet)
+- `GET /api/recommendation/recommendations/` - Get recommendations
+- `GET /api/recommendation/recommendations/<id>/` - Get recommendation details
+
+**Query Parameters** (for recommendations):
 - `limit` - Number of recommendations (default: 20)
 - `type` - Recommendation type (personalized, popular, trending)
+- `page` - Page number
+- `page_size` - Results per page
 
-### Experience (`/api/experience/`)
+### Experience (`/api/api/experience/`)
 
-- `GET /api/experience/page/<page>/` - Get personalized experience
-- `POST /api/experience/interactions/` - Track interaction
+**Note**: Uses ViewSet with custom actions. Note the double `/api/` prefix.
+
+#### Experience (ViewSet)
+- `GET /api/api/experience/experience/page/<page>/` - Get personalized experience for a page
+- `POST /api/api/experience/experience/interactions/` - Track user interaction
+
+**Query Parameters** (for page experience):
+- `max_sections` - Maximum number of sections (default: 10)
+- `session_id` - Session identifier
+- `time_of_day` - Time of day: `morning`, `afternoon`, `evening`
+- `device` - Device type: `mobile`, `desktop`, `tablet`
+- `location` - Location identifier
 
 **Pages**: `home`, `search`, `category`, `reading`, `profile`
 
 ### Subscriptions (`/api/subscription/`)
 
-- `GET /api/subscription/plans/` - List plans
-- `GET /api/subscription/plans/<id>/` - Get plan details
-- `GET /api/subscription/subscriptions/` - Get user subscriptions
-- `POST /api/subscription/subscriptions/` - Create subscription
-- `PUT /api/subscription/subscriptions/<id>/` - Update subscription
-- `DELETE /api/subscription/subscriptions/<id>/` - Cancel subscription
-- `POST /api/subscription/payments/` - Process payment
+- `GET /api/subscription/plans/` - List subscription plans
+- `GET /api/subscription/` - Get user's current subscription
+- `POST /api/subscription/checkout/` - Create Stripe checkout session
+- `POST /api/subscription/create/` - Create subscription
+- `POST /api/subscription/confirm/` - Confirm subscription
+- `POST /api/subscription/cancel/` - Cancel subscription
 
 ### Gmail Integration (`/api/gmail/`)
 
-- `GET /api/gmail/connect/` - Initiate OAuth flow
-- `GET /api/gmail/callback/` - OAuth callback
-- `POST /api/gmail/sync/` - Sync emails
-- `GET /api/gmail/accounts/` - Get connected accounts
-- `DELETE /api/gmail/accounts/<id>/` - Disconnect account
+- `GET /api/gmail/accounts/` - Get connected Gmail accounts
+- `GET /api/gmail/connect/` - Initiate Gmail OAuth connection
+- `POST /api/gmail/disconnect/` - Disconnect Gmail account
+- `POST /api/gmail/sync/` - Sync emails from Gmail
 
 ### Integrations (`/api/integration/`)
 
-- `GET /api/integration/` - List integrations
-- `POST /api/integration/<provider>/connect/` - Connect integration
-- `POST /api/integration/<provider>/sync/` - Sync content
-- `DELETE /api/integration/<id>/` - Disconnect integration
+- `GET /api/integration/` - List user integrations
+- `POST /api/integration/connect/` - Connect integration (Pocket, Notion, Evernote)
+- `POST /api/integration/disconnect/` - Disconnect integration
 
 **Providers**: `pocket`, `notion`, `evernote`
 
@@ -180,22 +331,211 @@ Content-Type: application/json
 ### Waitlist (`/api/waitlist/`)
 
 - `POST /api/waitlist/` - Join waitlist
-- `GET /api/waitlist/status/` - Check status
+- `GET /api/waitlist/<username>/available/` - Check if username is available
 
 ### Account Deletion (`/api/account-deletion/`)
 
-- `POST /api/account-deletion/request/` - Request deletion
-- `GET /api/account-deletion/status/` - Check status
+- `POST /api/account-deletion/request/` - Request account deletion
+- `GET /api/account-deletion/status/<deletionId>/` - Get deletion request status
+- `POST /api/account-deletion/cancel/<deletionId>/` - Cancel deletion request
+- `GET /api/account-deletion/stats/` - Get deletion statistics (admin only)
+
+## Request/Response Examples
+
+### Authentication Examples
+
+#### Send OTP
+
+```http
+POST /api/auth/send-otp/
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "message": "OTP sent successfully",
+  "status": "success"
+}
+```
+
+#### Verify OTP
+
+```http
+POST /api/auth/verify-otp/
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "otp": "123456"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "is_verified": true
+  }
+}
+```
+
+### User Profile Example
+
+#### Get User Profile
+
+```http
+GET /api/user/profile/
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK)**:
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "is_verified": true,
+  "onboarding_completed": true,
+  "created_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### Update Profile
+
+```http
+PATCH /api/user/profile/
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "first_name": "Jane",
+  "last_name": "Smith"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "is_verified": true,
+  "updated_at": "2024-01-02T00:00:00Z"
+}
+```
+
+### Email Examples
+
+#### Get Inbox Emails
+
+```http
+GET /api/email/inbox/?page=1&page_size=20
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK)**:
+```json
+{
+  "count": 100,
+  "next": "http://api.example.com/api/email/inbox/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "uuid",
+      "subject": "Newsletter Title",
+      "sender": "newsletter@example.com",
+      "preview": "Email preview text...",
+      "received_at": "2024-01-01T00:00:00Z",
+      "is_read": false,
+      "is_favorite": false
+    }
+  ]
+}
+```
+
+#### Toggle Favorite
+
+```http
+POST /api/email/<email_id>/favorite/
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK)**:
+```json
+{
+  "message": "Email favorited",
+  "is_favorite": true
+}
+```
+
+### Search Example
+
+#### Unified Search
+
+```http
+GET /api/search/unified/?q=newsletter&types=emails,posts&page=1&page_size=20
+Authorization: Bearer <access_token>
+```
+
+**Response (200 OK)**:
+```json
+{
+  "count": 50,
+  "next": "http://api.example.com/api/search/unified/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "type": "email",
+      "id": "uuid",
+      "title": "Email Subject",
+      "content": "Email content snippet...",
+      "score": 0.95
+    },
+    {
+      "type": "post",
+      "id": "uuid",
+      "title": "Post Title",
+      "content": "Post content snippet...",
+      "score": 0.87
+    }
+  ]
+}
+```
 
 ## Response Format
 
 ### Success Response
 
+Most endpoints return data in one of these formats:
+
+**Standard Success**:
 ```json
 {
   "data": { ... },
   "message": "Success message",
   "status": "success"
+}
+```
+
+**Direct Data**:
+```json
+{
+  "id": "uuid",
+  "field": "value",
+  ...
 }
 ```
 
@@ -205,11 +545,23 @@ Content-Type: application/json
 {
   "error": "Error message",
   "status": "error",
-  "code": "ERROR_CODE"
+  "code": "ERROR_CODE",
+  "details": { ... }
 }
 ```
 
+**Common Error Codes**:
+- `INVALID_OTP` - Invalid OTP code
+- `OTP_EXPIRED` - OTP has expired
+- `EMAIL_NOT_FOUND` - Email not found
+- `UNAUTHORIZED` - Authentication required
+- `PERMISSION_DENIED` - Insufficient permissions
+- `NOT_FOUND` - Resource not found
+- `VALIDATION_ERROR` - Request validation failed
+
 ### Paginated Response
+
+ViewSets and list endpoints return paginated responses:
 
 ```json
 {
@@ -222,14 +574,104 @@ Content-Type: application/json
 
 ## Status Codes
 
+### Success Codes
+
 - `200 OK` - Successful request
-- `201 Created` - Resource created
-- `204 No Content` - Successful deletion
-- `400 Bad Request` - Invalid request
-- `401 Unauthorized` - Authentication required
-- `403 Forbidden` - Permission denied
+- `201 Created` - Resource created successfully
+- `204 No Content` - Successful deletion (no content returned)
+
+### Client Error Codes
+
+- `400 Bad Request` - Invalid request data or validation errors
+- `401 Unauthorized` - Authentication required or token invalid/expired
+- `403 Forbidden` - Permission denied (authenticated but not authorized)
 - `404 Not Found` - Resource not found
+- `405 Method Not Allowed` - HTTP method not allowed for endpoint
+- `409 Conflict` - Resource conflict (e.g., duplicate email)
+- `422 Unprocessable Entity` - Validation errors
+- `429 Too Many Requests` - Rate limit exceeded
+
+### Server Error Codes
+
 - `500 Internal Server Error` - Server error
+- `502 Bad Gateway` - Gateway error
+- `503 Service Unavailable` - Service temporarily unavailable
+
+## Error Handling
+
+### Error Response Format
+
+All error responses follow this format:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Error message or validation errors object",
+  "error": "ErrorType"
+}
+```
+
+### Validation Errors
+
+When validation fails, `message` contains field-specific errors:
+
+```json
+{
+  "statusCode": 400,
+  "message": {
+    "email": ["This field is required.", "Enter a valid email address."],
+    "otp": ["OTP must be numeric.", "OTP must be exactly 4 digits."]
+  },
+  "error": "BadRequest"
+}
+```
+
+### Common Error Types
+
+- `BadRequest` - Invalid request data
+- `Unauthorized` - Authentication failed
+- `Forbidden` - Permission denied
+- `NotFound` - Resource not found
+- `ValidationError` - Validation failed
+- `InternalServerError` - Server error
+- `RateLimitExceeded` - Too many requests
+
+### Error Handling Examples
+
+#### Frontend Error Handling
+
+```typescript
+try {
+  const response = await api.post('/auth/verify-otp/', data);
+  return response.data;
+} catch (error) {
+  if (error.response) {
+    const { statusCode, message, error: errorType } = error.response.data;
+    
+    switch (statusCode) {
+      case 400:
+        // Handle validation errors
+        if (typeof message === 'object') {
+          // Field-specific errors
+          const errors = Object.values(message).flat();
+          throw new Error(errors.join(', '));
+        }
+        throw new Error(message);
+        
+      case 401:
+        // Handle authentication errors
+        throw new Error('Invalid OTP or session expired');
+        
+      case 404:
+        throw new Error('Resource not found');
+        
+      default:
+        throw new Error('An error occurred');
+    }
+  }
+  throw error;
+}
+```
 
 ## Rate Limiting
 

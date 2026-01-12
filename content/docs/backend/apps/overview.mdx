@@ -125,7 +125,7 @@ The INBO Backend is organized into multiple Django apps, each handling a specifi
 - `/api/directory/categories/` - List categories
 - `/api/directory/providers/<id>/` - Provider details
 
-### newsletter_profile_app
+### [newsletter_profile_app](/docs/backend/apps/newsletter-profile-app)
 **Purpose**: Newsletter subscriptions and posts
 
 **Key Models**:
@@ -140,9 +140,11 @@ The INBO Backend is organized into multiple Django apps, each handling a specifi
 - `NewsletterFetcherService` - Post fetching
 
 **Endpoints**:
-- `/api/newsletter-profile/profile/` - Get/update profile
-- `/api/newsletter-profile/preferences/` - Manage preferences
-- `/api/newsletter-profile/posts/` - Get posts
+- `/api/newsletter-profile/v1/profiles/` - Profile ViewSet
+- `/api/newsletter-profile/v1/preferences/` - Preferences ViewSet
+- `/api/newsletter-profile/v1/posts/` - Posts ViewSet
+
+**📖 [Full Documentation →](/docs/backend/apps/newsletter-profile-app)**
 
 ### [search_app](/docs/backend/apps/search-app)
 **Purpose**: Full-text search functionality
@@ -388,4 +390,5 @@ core (base)
 - [Gmail App](/docs/backend/apps/gmail-app) - Gmail integration
 - [Integration App](/docs/backend/apps/integration-app) - Third-party integrations
 - [AI App](/docs/backend/apps/ai-app) - AI-powered features
+- [Newsletter Profile App](/docs/backend/apps/newsletter-profile-app) - Newsletter subscriptions and posts
 - [Supporting Apps](/docs/backend/apps/supporting-apps) - Utility and administrative apps

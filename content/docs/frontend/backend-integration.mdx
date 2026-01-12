@@ -1,0 +1,500 @@
+---
+title: Frontend-Backend Integration
+description: Complete guide to integrating Next.js frontend with Django backend
+---
+
+# Frontend-Backend Integration Guide
+
+This guide covers how the Next.js frontend integrates with the Django backend, including authentication flow, API communication, error handling, and best practices.
+
+## Overview
+
+The INBO platform consists of:
+- **Frontend**: Next.js 16 web application (`webapp-nextjs`)
+- **Backend**: Django 5.0 REST API (`inbo-backend-django`)
+
+## Base URL Configuration
+
+### Frontend Configuration
+
+The frontend uses environment variables to configure the API base URL:
+
+```typescript
+// .env.local
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api
+```
+
+**Important**: The frontend should use `/api` (not `/api/v1`) as the backend does not use version prefixes.
+
+### Backend Configuration
+
+The backend serves APIs at:
+- **Development**: `http://localhost:8000/api`
+- **Production**: `https://inbo-django-api.azurewebsites.net/api`
+
+## Authentication Flow
+
+### Complete Authentication Flow
+
+```
+1. User enters email
+   ↓
+2. Frontend: POST /api/auth/send-otp/
+   ↓
+3. Backend: Sends OTP email, returns success
+   ↓
+4. User enters OTP
+   ↓
+5. Frontend: POST /api/auth/verify-otp/
+   ↓
+6. Backend: Validates OTP, returns JWT tokens
+   ↓
+7. Frontend: Stores tokens (cookies/localStorage)
+   ↓
+8. Frontend: Includes token in Authorization header for subsequent requests
+```
+
+### Frontend Implementation
+
+```typescript
+// services/auth.ts
+import api from '@/utils/api';
+
+export const authService = {
+  async sendOTP(email: string) {
+    const response = await api.post('/auth/send-otp/', { email });
+    return response.data;
+  },
+
+  async verifyOTP(email: string, otp: string, deviceInfo: any) {
+    const response = await api.post('/auth/verify-otp/', {
+      email,
+      otp,
+      deviceInfo
+    });
+    
+    // Store tokens
+    if (response.data.access && response.data.refresh) {
+      setAccessToken(response.data.access);
+      setRefreshToken(response.data.refresh);
+    }
+    
+    return response.data;
+  },
+
+  async refreshToken(refreshToken: string) {
+    const response = await api.post('/auth/refresh/', {
+      refresh: refreshToken
+    });
+    return response.data;
+  },
+
+  async logout(refreshToken: string) {
+    await api.post('/auth/logout/', { refresh: refreshToken });
+    // Clear tokens
+    clearTokens();
+  }
+};
+```
+
+### Token Management
+
+```typescript
+// utils/api.ts
+import axios from 'axios';
+import Cookies from 'js-cookie';
+
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor - Add token to requests
+api.interceptors.request.use(
+  (config) => {
+    const token = Cookies.get('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor - Handle token refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If 401 and not already retrying
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = Cookies.get('refresh_token');
+        if (refreshToken) {
+          const response = await axios.post(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh/`,
+            { refresh: refreshToken }
+          );
+
+          const { access } = response.data;
+          Cookies.set('access_token', access);
+          
+          // Retry original request with new token
+          originalRequest.headers.Authorization = `Bearer ${access}`;
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        // Refresh failed, redirect to login
+        Cookies.remove('access_token');
+        Cookies.remove('refresh_token');
+        window.location.href = '/auth/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+## API Service Mapping
+
+### Frontend Services → Backend Endpoints
+
+| Frontend Service | Backend Endpoint | Method |
+|-----------------|------------------|--------|
+| `authService.sendOTP()` | `/api/auth/send-otp/` | POST |
+| `authService.verifyOTP()` | `/api/auth/verify-otp/` | POST |
+| `authService.refreshToken()` | `/api/auth/refresh/` | POST |
+| `authService.logout()` | `/api/auth/logout/` | POST |
+| `userService.getProfile()` | `/api/user/profile/` | GET |
+| `userService.updateProfile()` | `/api/user/profile/` | PATCH |
+| `userService.getDashboardData()` | `/api/user/dashboard-data/` | GET |
+| `emailService.getInbox()` | `/api/email/inbox/` | GET |
+| `emailService.getEmail()` | `/api/email/<id>/` | GET |
+| `emailService.toggleFavorite()` | `/api/email/<id>/favorite/` | POST |
+| `newsletterService.getSubscriptions()` | `/api/user/subscriptions/` | GET |
+| `searchService.unifiedSearch()` | `/api/search/unified/` | GET |
+
+### Example Service Implementation
+
+```typescript
+// services/user.ts
+import api from '@/utils/api';
+
+export const userService = {
+  async getProfile() {
+    const response = await api.get('/user/profile/');
+    return response.data;
+  },
+
+  async updateProfile(data: Partial<UserProfile>) {
+    const response = await api.patch('/user/profile/', data);
+    return response.data;
+  },
+
+  async getDashboardData() {
+    const response = await api.get('/user/dashboard-data/');
+    return response.data;
+  },
+
+  async createInbox(username: string) {
+    const response = await api.post('/user/create-inbox/', { username });
+    return response.data;
+  }
+};
+```
+
+## Error Handling
+
+### Backend Error Response Format
+
+```json
+{
+  "statusCode": 400,
+  "message": "Error message or validation errors",
+  "error": "BadRequest"
+}
+```
+
+### Frontend Error Handling
+
+```typescript
+// utils/errors.ts
+import { AxiosError } from 'axios';
+
+export interface ApiError {
+  statusCode: number;
+  message: string | Record<string, string[]>;
+  error: string;
+}
+
+export function handleApiError(error: AxiosError<ApiError>) {
+  if (error.response) {
+    // Server responded with error
+    const apiError = error.response.data;
+    
+    switch (error.response.status) {
+      case 400:
+        // Bad Request - Validation errors
+        if (typeof apiError.message === 'object') {
+          // Validation errors object
+          return Object.values(apiError.message).flat().join(', ');
+        }
+        return apiError.message || 'Invalid request';
+        
+      case 401:
+        // Unauthorized - Token expired or invalid
+        return 'Session expired. Please login again.';
+        
+      case 403:
+        // Forbidden - No permission
+        return 'You do not have permission to perform this action.';
+        
+      case 404:
+        // Not Found
+        return 'Resource not found.';
+        
+      case 500:
+        // Internal Server Error
+        return 'Server error. Please try again later.';
+        
+      default:
+        return apiError.message || 'An error occurred';
+    }
+  } else if (error.request) {
+    // Request made but no response
+    return 'Network error. Please check your connection.';
+  } else {
+    // Error setting up request
+    return 'An unexpected error occurred.';
+  }
+}
+
+// Usage in components
+try {
+  const data = await userService.getProfile();
+} catch (error) {
+  const errorMessage = handleApiError(error);
+  toast.error(errorMessage);
+}
+```
+
+## Request/Response Format
+
+### Request Format
+
+All requests should include:
+- **Content-Type**: `application/json`
+- **Authorization**: `Bearer <access_token>` (for protected endpoints)
+
+### Response Format
+
+#### Success Response
+
+```json
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "name": "John Doe"
+}
+```
+
+Or with wrapper:
+
+```json
+{
+  "data": { ... },
+  "message": "Success message",
+  "status": "success"
+}
+```
+
+#### Paginated Response
+
+```json
+{
+  "count": 100,
+  "next": "http://api.example.com/endpoint/?page=2",
+  "previous": null,
+  "results": [ ... ]
+}
+```
+
+## Common Integration Patterns
+
+### Loading States
+
+```typescript
+// hooks/useUser.ts
+import { useState, useEffect } from 'react';
+import { userService } from '@/services/user';
+
+export function useUser() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        setLoading(true);
+        const data = await userService.getProfile();
+        setUser(data);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+  }, []);
+
+  return { user, loading, error };
+}
+```
+
+### Optimistic Updates
+
+```typescript
+// Update favorite status optimistically
+async function toggleFavorite(emailId: string) {
+  // Optimistically update UI
+  setEmails(prev => prev.map(email => 
+    email.id === emailId 
+      ? { ...email, is_favorite: !email.is_favorite }
+      : email
+  ));
+
+  try {
+    await emailService.toggleFavorite(emailId);
+  } catch (error) {
+    // Revert on error
+    setEmails(prev => prev.map(email => 
+      email.id === emailId 
+        ? { ...email, is_favorite: !email.is_favorite }
+        : email
+    ));
+    toast.error('Failed to update favorite status');
+  }
+}
+```
+
+### Pagination
+
+```typescript
+// hooks/usePaginatedData.ts
+import { useState, useCallback } from 'react';
+
+export function usePaginatedData<T>(
+  fetchFunction: (page: number) => Promise<{ results: T[]; next: string | null }>
+) {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(1);
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return;
+
+    setLoading(true);
+    try {
+      const response = await fetchFunction(page);
+      setData(prev => [...prev, ...response.results]);
+      setHasMore(!!response.next);
+      setPage(prev => prev + 1);
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, loading, hasMore, fetchFunction]);
+
+  return { data, loading, hasMore, loadMore };
+}
+```
+
+## CORS Configuration
+
+The backend must be configured to allow requests from the frontend:
+
+```python
+# settings.py
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Development
+    "https://your-frontend-domain.com",  # Production
+]
+
+CORS_ALLOW_CREDENTIALS = True
+```
+
+## Environment Variables
+
+### Frontend (.env.local)
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000/api
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Backend (.env)
+
+```bash
+CORS_ALLOWED_ORIGINS=http://localhost:3000,https://your-frontend-domain.com
+ALLOWED_HOSTS=localhost,127.0.0.1,your-backend-domain.com
+```
+
+## Testing Integration
+
+### Mock API Responses
+
+```typescript
+// __mocks__/api.ts
+export const mockApi = {
+  get: jest.fn(),
+  post: jest.fn(),
+  patch: jest.fn(),
+  delete: jest.fn(),
+};
+
+// In tests
+import { mockApi } from '@/__mocks__/api';
+
+test('fetches user profile', async () => {
+  mockApi.get.mockResolvedValue({
+    data: {
+      id: '123',
+      email: 'test@example.com',
+      name: 'Test User'
+    }
+  });
+
+  const profile = await userService.getProfile();
+  expect(profile.email).toBe('test@example.com');
+});
+```
+
+## Best Practices
+
+1. **Always handle errors**: Use try-catch blocks and provide user feedback
+2. **Show loading states**: Indicate when requests are in progress
+3. **Cache responses**: Use React Query or SWR for data caching
+4. **Optimistic updates**: Update UI immediately, revert on error
+5. **Token refresh**: Automatically refresh tokens when expired
+6. **Request cancellation**: Cancel requests when components unmount
+7. **Type safety**: Use TypeScript interfaces matching backend serializers
+
+## Related Documentation
+
+- [Frontend API Integration](/docs/frontend/api-integration) - Frontend API service layer
+- [Backend API Overview](/docs/backend/api/overview) - Complete backend API documentation
+- [Authentication App](/docs/backend/apps/auth-app) - Backend authentication details
+- [Frontend Services](/docs/frontend/services) - Frontend service layer

@@ -129,6 +129,108 @@ Search newsletters in the directory (public endpoint).
 }
 ```
 
+### Categories
+
+#### GET `/api/directory/categories/`
+Get all newsletter categories.
+
+**Response** (200):
+```json
+{
+  "categories": [
+    {
+      "id": "uuid",
+      "name": "Technology",
+      "description": "Tech-related newsletters",
+      "slug": "technology",
+      "level": 1
+    }
+  ]
+}
+```
+
+### Recommendations
+
+#### GET `/api/directory/recommendations/`
+Get newsletter recommendations (requires authentication).
+
+**Query Parameters**:
+- `limit` (optional): Number of recommendations (default: 20)
+
+**Response** (200):
+```json
+{
+  "recommendations": [
+    {
+      "id": "uuid",
+      "name": "Tech Newsletter",
+      "score": 0.95,
+      "reason": "Based on your reading history"
+    }
+  ]
+}
+```
+
+### Preview Endpoints
+
+#### GET `/api/directory/search-newsletters-preview/`
+Search newsletters preview (quick search, limited results).
+
+**Query Parameters**:
+- `q` (required): Search query
+
+**Response** (200):
+```json
+{
+  "results": [
+    {
+      "id": "uuid",
+      "name": "Tech Newsletter",
+      "preview": "Weekly tech news..."
+    }
+  ]
+}
+```
+
+#### GET `/api/directory/search-categories-preview/`
+Search categories preview.
+
+**Query Parameters**:
+- `q` (required): Search query
+
+**Response** (200):
+```json
+{
+  "results": [
+    {
+      "id": "uuid",
+      "name": "Technology",
+      "preview": "Tech-related newsletters"
+    }
+  ]
+}
+```
+
+#### GET `/api/directory/search-category-newsletters-preview/`
+Search newsletters in a category (preview).
+
+**Query Parameters**:
+- `categoryId` (required): Category ID
+- `q` (optional): Search query
+
+**Response** (200):
+```json
+{
+  "results": [
+    {
+      "id": "uuid",
+      "name": "Tech Newsletter",
+      "preview": "Weekly tech news..."
+    }
+  ]
+}
+```
+
 ### Newsletter Details
 
 #### GET `/api/directory/<id>/`

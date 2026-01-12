@@ -1,0 +1,463 @@
+---
+title: Testing Guide
+description: Complete guide to testing the INBO Backend
+---
+
+# Testing Guide
+
+This guide covers testing strategies, test structure, and best practices for the INBO Backend Django application.
+
+## Overview
+
+The INBO Backend uses Django's built-in testing framework, which is based on Python's `unittest` module. Tests are organized by app and cover unit tests, integration tests, and API endpoint tests.
+
+## Test Structure
+
+### Test Organization
+
+```
+inbo-backend-django/
+├── auth_app/
+│   ├── tests.py          # Auth app tests
+│   └── test_services.py  # Service layer tests
+├── user_app/
+│   ├── tests.py          # User app tests
+│   └── test_views.py     # View/endpoint tests
+└── core/
+    └── tests.py          # Core model tests
+```
+
+### Test File Naming
+
+- `tests.py` - Main test file for an app
+- `test_*.py` - Additional test files (e.g., `test_services.py`, `test_views.py`)
+
+## Running Tests
+
+### Run All Tests
+
+```bash
+# Run all tests
+python manage.py test
+
+# Run with verbosity
+python manage.py test --verbosity=2
+
+# Run with coverage
+coverage run --source='.' manage.py test
+coverage report
+coverage html  # Generate HTML report
+```
+
+### Run Tests for Specific App
+
+```bash
+# Run tests for auth_app
+python manage.py test auth_app
+
+# Run tests for specific test class
+python manage.py test auth_app.tests.TestAuthService
+
+# Run specific test method
+python manage.py test auth_app.tests.TestAuthService.test_send_otp
+```
+
+### Run Tests with Database
+
+```bash
+# Use test database (default)
+python manage.py test
+
+# Keep test database after tests
+python manage.py test --keepdb
+```
+
+## Writing Tests
+
+### Basic Test Structure
+
+```python
+from django.test import TestCase
+from django.contrib.auth import get_user_model
+from auth_app.services import AuthService
+
+User = get_user_model()
+
+class AuthServiceTestCase(TestCase):
+    """Test cases for AuthService"""
+    
+    def setUp(self):
+        """Set up test data"""
+        self.auth_service = AuthService()
+        self.test_email = "test@example.com"
+    
+    def test_send_otp(self):
+        """Test sending OTP"""
+        result = self.auth_service.send_otp(self.test_email)
+        self.assertTrue(result['success'])
+        self.assertIn('message', result)
+    
+    def tearDown(self):
+        """Clean up after tests"""
+        pass
+```
+
+### Model Tests
+
+```python
+from django.test import TestCase
+from core.models import User, Email
+
+class UserModelTestCase(TestCase):
+    """Test User model"""
+    
+    def test_create_user(self):
+        """Test user creation"""
+        user = User.objects.create_user(
+            email="test@example.com",
+            first_name="Test",
+            last_name="User"
+        )
+        self.assertEqual(user.email, "test@example.com")
+        self.assertFalse(user.is_verified)
+    
+    def test_user_str(self):
+        """Test user string representation"""
+        user = User.objects.create_user(email="test@example.com")
+        self.assertEqual(str(user), "test@example.com")
+```
+
+### Service Tests
+
+```python
+from django.test import TestCase
+from unittest.mock import patch, MagicMock
+from auth_app.services import AuthService
+
+class AuthServiceTestCase(TestCase):
+    """Test AuthService"""
+    
+    @patch('auth_app.services.NodemailerService')
+    def test_send_otp_success(self, mock_nodemailer):
+        """Test successful OTP sending"""
+        mock_nodemailer.send_otp.return_value = True
+        
+        auth_service = AuthService()
+        result = auth_service.send_otp("test@example.com")
+        
+        self.assertTrue(result['success'])
+        mock_nodemailer.send_otp.assert_called_once()
+    
+    def test_verify_otp_invalid(self):
+        """Test OTP verification with invalid OTP"""
+        auth_service = AuthService()
+        
+        # Send OTP first
+        auth_service.send_otp("test@example.com")
+        
+        # Try to verify with wrong OTP
+        with self.assertRaises(ValueError):
+            auth_service.verify_otp("test@example.com", "9999", {})
+```
+
+### API Endpoint Tests
+
+```python
+from django.test import TestCase, Client
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
+from rest_framework import status
+
+User = get_user_model()
+
+class AuthAPITestCase(TestCase):
+    """Test authentication API endpoints"""
+    
+    def setUp(self):
+        """Set up test client and data"""
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="test@example.com"
+        )
+    
+    def test_send_otp_endpoint(self):
+        """Test send OTP endpoint"""
+        url = '/api/auth/send-otp/'
+        data = {'email': 'test@example.com'}
+        
+        response = self.client.post(url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['success'])
+    
+    def test_verify_otp_endpoint(self):
+        """Test verify OTP endpoint"""
+        # First send OTP
+        send_url = '/api/auth/send-otp/'
+        self.client.post(send_url, {'email': 'test@example.com'}, format='json')
+        
+        # Get OTP from database (in real test, you'd mock this)
+        # For now, we'll test the endpoint structure
+        verify_url = '/api/auth/verify-otp/'
+        data = {
+            'email': 'test@example.com',
+            'otp': '1234',
+            'deviceInfo': {}
+        }
+        
+        # This will fail with invalid OTP, but tests endpoint structure
+        response = self.client.post(verify_url, data, format='json')
+        self.assertIn(response.status_code, [
+            status.HTTP_200_OK,
+            status.HTTP_401_UNAUTHORIZED
+        ])
+```
+
+### Authentication in Tests
+
+```python
+from rest_framework.test import APIClient
+from rest_framework_simplejwt.tokens import RefreshToken
+
+class AuthenticatedAPITestCase(TestCase):
+    """Test authenticated API endpoints"""
+    
+    def setUp(self):
+        """Set up authenticated client"""
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="test@example.com",
+            is_verified=True
+        )
+        
+        # Get JWT tokens
+        refresh = RefreshToken.for_user(self.user)
+        self.access_token = str(refresh.access_token)
+        
+        # Set authorization header
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {self.access_token}'
+        )
+    
+    def test_get_user_profile(self):
+        """Test getting user profile"""
+        url = '/api/user/profile/'
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], self.user.email)
+```
+
+## Test Fixtures
+
+### Using Fixtures
+
+```python
+from django.test import TestCase
+from core.models import User, Email, Newsletter
+
+class EmailTestCase(TestCase):
+    """Test email operations"""
+    
+    fixtures = ['test_users.json', 'test_emails.json']
+    
+    def test_get_emails(self):
+        """Test getting emails"""
+        user = User.objects.get(email="test@example.com")
+        emails = Email.objects.filter(user=user)
+        self.assertGreater(emails.count(), 0)
+```
+
+### Creating Test Data
+
+```python
+from django.test import TestCase
+from model_bakery import baker  # Using model_bakery for easy test data
+
+class NewsletterTestCase(TestCase):
+    """Test newsletter operations"""
+    
+    def setUp(self):
+        """Create test data"""
+        self.user = baker.make(User, email="test@example.com")
+        self.newsletter = baker.make(
+            Newsletter,
+            user=self.user,
+            sender="newsletter@example.com"
+        )
+    
+    def test_newsletter_creation(self):
+        """Test newsletter creation"""
+        self.assertEqual(self.newsletter.user, self.user)
+        self.assertEqual(self.newsletter.sender, "newsletter@example.com")
+```
+
+## Testing Best Practices
+
+### 1. Test Isolation
+
+- Each test should be independent
+- Use `setUp()` and `tearDown()` for test data
+- Don't rely on test execution order
+
+### 2. Test Naming
+
+- Use descriptive test method names
+- Follow pattern: `test_<what>_<condition>_<expected_result>`
+- Example: `test_send_otp_with_valid_email_returns_success`
+
+### 3. Test Coverage
+
+- Aim for high coverage of critical paths
+- Test both success and failure cases
+- Test edge cases and boundary conditions
+
+### 4. Mocking External Services
+
+```python
+from unittest.mock import patch
+
+class EmailServiceTestCase(TestCase):
+    """Test email service with mocked external calls"""
+    
+    @patch('email_app.services.AzureBlobService')
+    @patch('email_app.services.AIService')
+    def test_summarize_email(self, mock_ai, mock_azure):
+        """Test email summarization with mocked services"""
+        mock_azure.get_email_buffer.return_value = b"email content"
+        mock_ai.summarize.return_value = "Summary"
+        
+        # Test your service
+        result = email_service.summarize_email("email-id")
+        
+        self.assertEqual(result, "Summary")
+        mock_ai.summarize.assert_called_once()
+```
+
+### 5. Database Transactions
+
+```python
+from django.test import TransactionTestCase
+from django.db import transaction
+
+class TransactionTestCase(TransactionTestCase):
+    """Test cases that require database transactions"""
+    
+    def test_concurrent_updates(self):
+        """Test concurrent database updates"""
+        # Your test code here
+        pass
+```
+
+## Integration Testing
+
+### Testing API Integration
+
+```python
+from django.test import TestCase
+from rest_framework.test import APIClient
+
+class IntegrationTestCase(TestCase):
+    """Test complete API workflows"""
+    
+    def test_complete_onboarding_flow(self):
+        """Test complete user onboarding flow"""
+        client = APIClient()
+        
+        # 1. Send OTP
+        response = client.post('/api/auth/send-otp/', {
+            'email': 'newuser@example.com'
+        })
+        self.assertEqual(response.status_code, 200)
+        
+        # 2. Verify OTP (would need actual OTP in real test)
+        # 3. Complete onboarding
+        # 4. Create inbox
+        # 5. Verify user state
+```
+
+## Performance Testing
+
+### Load Testing
+
+```python
+from django.test import TestCase
+import time
+
+class PerformanceTestCase(TestCase):
+    """Test API performance"""
+    
+    def test_search_performance(self):
+        """Test search endpoint performance"""
+        client = APIClient()
+        start_time = time.time()
+        
+        response = client.get('/api/search/unified/?q=test')
+        
+        elapsed_time = time.time() - start_time
+        self.assertLess(elapsed_time, 1.0)  # Should complete in < 1 second
+        self.assertEqual(response.status_code, 200)
+```
+
+## Continuous Integration
+
+### GitHub Actions Example
+
+```yaml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          python manage.py test
+      - name: Generate coverage
+        run: |
+          coverage run --source='.' manage.py test
+          coverage report
+```
+
+## Test Data Management
+
+### Using Factories
+
+```python
+# factories.py
+import factory
+from core.models import User
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+    
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    first_name = factory.Faker('first_name')
+    last_name = factory.Faker('last_name')
+    is_verified = True
+
+# In tests
+from .factories import UserFactory
+
+class TestCase(TestCase):
+    def setUp(self):
+        self.user = UserFactory()
+```
+
+## Related Documentation
+
+- [Django Testing Documentation](https://docs.djangoproject.com/en/stable/topics/testing/)
+- [DRF Testing Documentation](https://www.django-rest-framework.org/api-guide/testing/)
+- [Core App Documentation](/docs/backend/apps/core-app)
+- [API Documentation](/docs/backend/api/overview)

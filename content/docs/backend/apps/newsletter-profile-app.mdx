@@ -1,0 +1,487 @@
+---
+title: Newsletter Profile App
+description: Newsletter subscriptions, preferences, and post management
+---
+
+# Newsletter Profile App (`newsletter_profile_app`)
+
+The Newsletter Profile App manages user newsletter subscriptions, preferences, and individual newsletter posts/articles.
+
+## Overview
+
+The `newsletter_profile_app` provides:
+- **Newsletter Profiles**: User-specific newsletter profiles
+- **Preferences**: User preferences for specific newsletters
+- **Post Management**: Individual newsletter posts/articles
+- **Post Fetching**: Automated fetching of newsletter posts from external sources
+
+## Key Features
+
+- **Profile Management**: Create and manage user newsletter profiles
+- **Preference Management**: Set preferences for individual newsletters
+- **Post Tracking**: Track individual newsletter posts/articles
+- **Reading Progress**: Track reading progress for posts
+- **Post Fetching**: Automated RSS feed parsing and post extraction
+
+## Models
+
+### NewsletterProfile
+
+**Table**: `newsletter_profile_app_newsletterprofile`
+
+**Purpose**: User newsletter profile
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user (OneToOne with User)
+- `created_at` (DateTime) - Creation timestamp
+- `updated_at` (DateTime) - Last update timestamp
+
+**Relationships**:
+- One-to-One: `user` → User
+- One-to-Many: `preferences` → NewsletterPreference
+
+### NewsletterPreference
+
+**Table**: `newsletter_profile_app_newsletterpreference`
+
+**Purpose**: User preferences for specific newsletters
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `profile` (ForeignKey) - Newsletter profile
+- `provider` (ForeignKey) - Newsletter provider (from directory_app)
+- `is_subscribed` (Boolean) - Subscription status
+- `notification_enabled` (Boolean) - Notification preference
+- `created_at` (DateTime) - Creation timestamp
+- `updated_at` (DateTime) - Last update timestamp
+
+**Relationships**:
+- Many-to-One: `profile` → NewsletterProfile
+- Many-to-One: `provider` → NewsletterProvider (directory_app)
+- One-to-Many: `posts` → NewsletterPost
+
+### NewsletterPost
+
+**Table**: `newsletter_profile_app_newsletterpost`
+
+**Purpose**: Individual newsletter posts/articles
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `preference` (ForeignKey) - Newsletter preference
+- `title` (CharField) - Post title
+- `description` (TextField) - Description/summary
+- `content` (TextField) - Full post content
+- `post_url` (URLField) - Original post URL
+- `published_at` (DateTime) - Publication date
+- `is_read` (Boolean) - Read status
+- `reading_progress` (Integer) - Reading progress (0-100)
+- `created_at` (DateTime) - Creation timestamp
+- `updated_at` (DateTime) - Last update timestamp
+
+**Relationships**:
+- Many-to-One: `preference` → NewsletterPreference
+
+## Services
+
+### NewsletterProfileService
+
+**Purpose**: Newsletter profile management
+
+**Key Methods**:
+- `get_or_create_profile(user_id)` - Get or create user profile
+- `update_profile(user_id, data)` - Update profile
+- `get_profile(user_id)` - Get user profile
+
+### NewsletterPreferenceService
+
+**Purpose**: Newsletter preference management
+
+**Key Methods**:
+- `get_preferences(user_id)` - Get all preferences for user
+- `create_preference(user_id, provider_id, data)` - Create preference
+- `update_preference(preference_id, data)` - Update preference
+- `delete_preference(preference_id)` - Delete preference
+- `toggle_subscription(preference_id)` - Toggle subscription status
+
+### NewsletterPostService
+
+**Purpose**: Newsletter post management
+
+**Key Methods**:
+- `get_posts(user_id, filters)` - Get posts with filters
+- `get_post(post_id)` - Get post details
+- `mark_as_read(post_id)` - Mark post as read
+- `update_reading_progress(post_id, progress)` - Update reading progress
+- `get_unread_posts(user_id)` - Get unread posts
+
+### NewsletterFetcherService
+
+**Purpose**: Fetch newsletter posts from external sources
+
+**Key Methods**:
+- `fetch_posts(preference)` - Fetch posts for preference
+- `parse_rss_feed(url)` - Parse RSS feed
+- `extract_post_content(url)` - Extract post content from URL
+- `schedule_fetch(preference_id)` - Schedule automatic fetching
+
+## API Endpoints
+
+**Note**: This API uses version prefix `/v1/` and ViewSets.
+
+### Profiles (ViewSet)
+
+#### GET `/api/newsletter-profile/v1/profiles/`
+List newsletter profiles (typically one per user).
+
+**Query Parameters**:
+- `page` (optional): Page number
+- `page_size` (optional): Results per page
+
+**Response** (200):
+```json
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": "uuid",
+      "user": "user-uuid",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+#### GET `/api/newsletter-profile/v1/profiles/<id>/`
+Get profile details.
+
+**Response** (200):
+```json
+{
+  "id": "uuid",
+  "user": "user-uuid",
+  "preferences_count": 10,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### POST `/api/newsletter-profile/v1/profiles/`
+Create newsletter profile.
+
+**Request Body**:
+```json
+{}
+```
+
+**Response** (201):
+```json
+{
+  "id": "uuid",
+  "user": "user-uuid",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### PUT `/api/newsletter-profile/v1/profiles/<id>/`
+Update profile (full update).
+
+#### PATCH `/api/newsletter-profile/v1/profiles/<id>/`
+Update profile (partial update).
+
+#### DELETE `/api/newsletter-profile/v1/profiles/<id>/`
+Delete profile.
+
+### Preferences (ViewSet)
+
+#### GET `/api/newsletter-profile/v1/preferences/`
+List newsletter preferences.
+
+**Query Parameters**:
+- `is_subscribed` (optional): Filter by subscription status
+- `provider` (optional): Filter by provider ID
+- `page` (optional): Page number
+- `page_size` (optional): Results per page
+
+**Response** (200):
+```json
+{
+  "count": 10,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": "uuid",
+      "profile": "profile-uuid",
+      "provider": {
+        "id": "provider-id",
+        "name": "Tech Newsletter"
+      },
+      "is_subscribed": true,
+      "notification_enabled": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+#### GET `/api/newsletter-profile/v1/preferences/<id>/`
+Get preference details.
+
+**Response** (200):
+```json
+{
+  "id": "uuid",
+  "profile": "profile-uuid",
+  "provider": {
+    "id": "provider-id",
+    "name": "Tech Newsletter",
+    "url": "https://example.com"
+  },
+  "is_subscribed": true,
+  "notification_enabled": true,
+  "posts_count": 25,
+  "unread_posts_count": 5,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### POST `/api/newsletter-profile/v1/preferences/`
+Create newsletter preference.
+
+**Request Body**:
+```json
+{
+  "provider": "provider-id",
+  "is_subscribed": true,
+  "notification_enabled": true
+}
+```
+
+**Response** (201):
+```json
+{
+  "id": "uuid",
+  "profile": "profile-uuid",
+  "provider": "provider-id",
+  "is_subscribed": true,
+  "notification_enabled": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### PUT `/api/newsletter-profile/v1/preferences/<id>/`
+Update preference (full update).
+
+#### PATCH `/api/newsletter-profile/v1/preferences/<id>/`
+Update preference (partial update).
+
+**Request Body**:
+```json
+{
+  "is_subscribed": false,
+  "notification_enabled": false
+}
+```
+
+#### DELETE `/api/newsletter-profile/v1/preferences/<id>/`
+Delete preference.
+
+### Posts (ViewSet)
+
+#### GET `/api/newsletter-profile/v1/posts/`
+List newsletter posts.
+
+**Query Parameters**:
+- `preference` (optional): Filter by preference ID
+- `is_read` (optional): Filter by read status
+- `provider` (optional): Filter by provider ID
+- `published_after` (optional): Filter by publication date
+- `page` (optional): Page number
+- `page_size` (optional): Results per page
+
+**Response** (200):
+```json
+{
+  "count": 100,
+  "next": "http://api.example.com/api/newsletter-profile/v1/posts/?page=2",
+  "previous": null,
+  "results": [
+    {
+      "id": "uuid",
+      "preference": "preference-uuid",
+      "title": "Post Title",
+      "description": "Post description...",
+      "content": "Full post content...",
+      "post_url": "https://example.com/post",
+      "published_at": "2024-01-01T00:00:00Z",
+      "is_read": false,
+      "reading_progress": 0,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+#### GET `/api/newsletter-profile/v1/posts/<id>/`
+Get post details.
+
+**Response** (200):
+```json
+{
+  "id": "uuid",
+  "preference": {
+    "id": "preference-uuid",
+    "provider": {
+      "id": "provider-id",
+      "name": "Tech Newsletter"
+    }
+  },
+  "title": "Post Title",
+  "description": "Post description...",
+  "content": "Full post content...",
+  "post_url": "https://example.com/post",
+  "published_at": "2024-01-01T00:00:00Z",
+  "is_read": false,
+  "reading_progress": 0,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### POST `/api/newsletter-profile/v1/posts/`
+Create post (typically done by fetcher service).
+
+**Request Body**:
+```json
+{
+  "preference": "preference-uuid",
+  "title": "Post Title",
+  "description": "Post description",
+  "content": "Full content",
+  "post_url": "https://example.com/post",
+  "published_at": "2024-01-01T00:00:00Z"
+}
+```
+
+#### PUT `/api/newsletter-profile/v1/posts/<id>/`
+Update post (full update).
+
+#### PATCH `/api/newsletter-profile/v1/posts/<id>/`
+Update post (partial update).
+
+**Request Body**:
+```json
+{
+  "is_read": true,
+  "reading_progress": 100
+}
+```
+
+#### DELETE `/api/newsletter-profile/v1/posts/<id>/`
+Delete post.
+
+## Usage Examples
+
+### Get User Preferences
+
+```python
+import requests
+
+headers = {
+    'Authorization': 'Bearer <access_token>'
+}
+
+# Get all preferences
+response = requests.get(
+    'https://api.inbo.me/api/newsletter-profile/v1/preferences/',
+    headers=headers
+)
+
+preferences = response.json()['results']
+print(f"Total preferences: {len(preferences)}")
+```
+
+### Subscribe to Newsletter
+
+```python
+# Create preference
+response = requests.post(
+    'https://api.inbo.me/api/newsletter-profile/v1/preferences/',
+    headers=headers,
+    json={
+        'provider': 'tech-newsletter-id',
+        'is_subscribed': True,
+        'notification_enabled': True
+    }
+)
+
+preference = response.json()
+print(f"Subscribed to: {preference['provider']}")
+```
+
+### Get Unread Posts
+
+```python
+# Get unread posts
+response = requests.get(
+    'https://api.inbo.me/api/newsletter-profile/v1/posts/',
+    headers=headers,
+    params={
+        'is_read': False,
+        'page_size': 20
+    }
+)
+
+unread_posts = response.json()['results']
+print(f"Unread posts: {len(unread_posts)}")
+```
+
+### Mark Post as Read
+
+```python
+# Mark post as read
+response = requests.patch(
+    f'https://api.inbo.me/api/newsletter-profile/v1/posts/{post_id}/',
+    headers=headers,
+    json={
+        'is_read': True,
+        'reading_progress': 100
+    }
+)
+```
+
+## Integration
+
+### With Directory App
+- Links preferences to newsletter providers
+- Uses provider information for display
+
+### With User App
+- One-to-one relationship with user
+- User can manage subscriptions through user app endpoints
+
+### With Reading App
+- Tracks reading progress for posts
+- Integrates with reading statistics
+
+### With Search App
+- Posts are indexed for search
+- Searchable by title, description, content
+
+## Related Documentation
+
+- [Directory App](/docs/backend/apps/directory-app) - Newsletter provider directory
+- [User App](/docs/backend/apps/user-app) - User subscription management
+- [Reading App](/docs/backend/apps/reading-app) - Reading statistics
+- [Search App](/docs/backend/apps/search-app) - Post search functionality
+- [API Reference](/openapi/api-reference)

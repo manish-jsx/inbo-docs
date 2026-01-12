@@ -390,6 +390,183 @@ Search functionality is primarily handled through the search app's views and uti
 **Dependencies**:
 - `waitlist_app.models` - Waitlist model
 
+## Service Method Signatures
+
+### UserService Methods
+
+```python
+class UserService:
+    def check_user_verification(self, user_id: str) -> dict:
+        """Returns: {'isVerified': bool, 'isInboxCreated': bool, 'isGmailConnected': bool}"""
+    
+    def get_user_profile(self, user_id: str) -> dict:
+        """Returns: User profile with subscription, inbox, Gmail accounts"""
+    
+    def get_complete_user_data(self, user_id: str) -> dict:
+        """Returns: Complete user data including emails, newsletters, stats, etc."""
+    
+    def create_inbox(self, user_id: str, username: str) -> dict:
+        """Returns: {'success': bool, 'email': str, 'message': str}"""
+    
+    def get_dashboard_data(self, user_id: str) -> dict:
+        """Returns: Dashboard statistics (emails, reading, subscriptions, storage)"""
+```
+
+### EmailService Methods
+
+```python
+class EmailService:
+    def get_emails(
+        self, 
+        user_id: str, 
+        folder: str = None,
+        is_read: bool = None,
+        is_favorite: bool = None,
+        page: int = 1,
+        page_size: int = 20
+    ) -> dict:
+        """Returns: Paginated email list"""
+    
+    def get_email(self, email_id: str) -> dict:
+        """Returns: Email details with content"""
+    
+    def toggle_favorite(self, email_id: str) -> dict:
+        """Returns: {'is_favorite': bool, 'message': str}"""
+    
+    def add_highlight(
+        self, 
+        email_id: str, 
+        text: str, 
+        note: str = None
+    ) -> dict:
+        """Returns: Highlight object"""
+```
+
+### AuthService Methods
+
+```python
+class AuthService:
+    def send_otp(self, email: str) -> dict:
+        """Returns: {'success': bool, 'message': str}"""
+    
+    def verify_otp(
+        self, 
+        email: str, 
+        otp: str, 
+        device_info: dict = None
+    ) -> dict:
+        """Returns: {'access': str, 'refresh': str, 'user': dict, 'isNewUser': bool}"""
+    
+    def refresh_token(self, refresh_token: str) -> dict:
+        """Returns: {'access': str, 'expiresAt': str}"""
+```
+
+## Usage Examples
+
+### UserService Example
+
+```python
+from user_app.services import UserService
+
+user_service = UserService()
+
+# Get user profile
+profile = user_service.get_user_profile(user_id="123e4567-e89b-12d3-a456-426614174000")
+print(f"User: {profile['email']}")
+print(f"Subscription: {profile['subscription']['plan']}")
+
+# Create inbox
+result = user_service.create_inbox(
+    user_id="123e4567-e89b-12d3-a456-426614174000",
+    username="johndoe"
+)
+print(f"Inbox created: {result['email']}")
+
+# Get dashboard data
+dashboard = user_service.get_dashboard_data(user_id="123e4567-e89b-12d3-a456-426614174000")
+print(f"Unread emails: {dashboard['emails']['unread']}")
+print(f"Reading streak: {dashboard['reading']['streak']}")
+```
+
+### EmailService Example
+
+```python
+from email_app.services import EmailService
+
+email_service = EmailService()
+
+# Get inbox emails
+emails = email_service.get_emails(
+    user_id="123e4567-e89b-12d3-a456-426614174000",
+    folder="inbox",
+    is_read=False,
+    page=1,
+    page_size=20
+)
+
+for email in emails['results']:
+    print(f"{email['subject']} - {email['sender']}")
+
+# Toggle favorite
+result = email_service.toggle_favorite(email_id="email-uuid")
+print(f"Favorite status: {result['is_favorite']}")
+
+# Add highlight
+highlight = email_service.add_highlight(
+    email_id="email-uuid",
+    text="Important point",
+    note="Remember this"
+)
+print(f"Highlight created: {highlight['id']}")
+```
+
+### AuthService Example
+
+```python
+from auth_app.services import AuthService
+
+auth_service = AuthService()
+
+# Send OTP
+result = auth_service.send_otp("user@example.com")
+print(result['message'])
+
+# Verify OTP
+tokens = auth_service.verify_otp(
+    email="user@example.com",
+    otp="1234",
+    device_info={
+        "deviceName": "iPhone 14",
+        "userAgent": "Mozilla/5.0...",
+        "ip": "192.168.1.1"
+    }
+)
+print(f"Access token: {tokens['access']}")
+print(f"New user: {tokens['isNewUser']}")
+
+# Refresh token
+new_tokens = auth_service.refresh_token(tokens['refresh'])
+print(f"New access token: {new_tokens['access']}")
+```
+
+### SubscriptionService Example
+
+```python
+from subscription_app.services import SubscriptionService
+
+subscription_service = SubscriptionService()
+
+# Get plans
+plans = subscription_service.get_subscription_plans()
+for plan in plans:
+    print(f"{plan['name']}: ${plan['price']}/{plan['billingInterval']}")
+
+# Get user subscription
+subscription = subscription_service.get_user_subscription(user_id="user-uuid")
+print(f"Current plan: {subscription['plan']['name']}")
+print(f"Status: {subscription['status']}")
+```
+
 ## Service Patterns
 
 ### Error Handling
@@ -403,6 +580,35 @@ except SpecificException as e:
     raise ServiceException('User-friendly message')
 ```
 
+**Example**:
+```python
+def create_inbox(self, user_id: str, username: str) -> dict:
+    try:
+        user = User.objects.get(id=user_id)
+        
+        # Validate username
+        if not self.check_inbox_availability(username)['available']:
+            raise ValueError('Username not available')
+        
+        # Create inbox
+        inbox = InboxEmail.objects.create(
+            user=user,
+            email=username
+        )
+        
+        return {
+            'success': True,
+            'email': f"{username}@inbo.me",
+            'message': 'Inbox created successfully'
+        }
+    except User.DoesNotExist:
+        logger.error(f'User not found: {user_id}')
+        raise ValueError('User not found')
+    except Exception as e:
+        logger.error(f'Failed to create inbox: {str(e)}')
+        raise
+```
+
 ### Caching
 Services use Redis for caching:
 - User features: 15 minutes TTL
@@ -410,11 +616,88 @@ Services use Redis for caching:
 - Search results: 5 minutes TTL
 - Dashboard data: 5 minutes TTL
 
+**Example**:
+```python
+from django.core.cache import cache
+
+def get_dashboard_data(self, user_id: str) -> dict:
+    cache_key = f'dashboard_data:{user_id}'
+    cached_data = cache.get(cache_key)
+    
+    if cached_data:
+        return cached_data
+    
+    # Fetch data
+    data = self._fetch_dashboard_data(user_id)
+    
+    # Cache for 5 minutes
+    cache.set(cache_key, data, 300)
+    
+    return data
+```
+
 ### Logging
 All services use structured logging:
 ```python
 logger.info(f'Operation started: {params}')
 logger.error(f'Operation failed: {error}')
+```
+
+**Example**:
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def send_otp(self, email: str) -> dict:
+    logger.info(f'Sending OTP to: {email}')
+    
+    try:
+        otp = self.generate_otp()
+        hashed_otp = self.hash_otp(otp)
+        
+        # Store verification request
+        VerificationRequest.objects.create(
+            email=email,
+            token=hashed_otp,
+            type=VerificationType.OTP
+        )
+        
+        # Send email
+        self.nodemailer_service.send_otp(email, otp)
+        
+        logger.info(f'OTP sent successfully to: {email}')
+        return {'success': True, 'message': 'OTP sent to your email'}
+        
+    except Exception as e:
+        logger.error(f'Failed to send OTP to {email}: {str(e)}', exc_info=True)
+        raise
+```
+
+### Transaction Management
+Services use database transactions for atomic operations:
+```python
+from django.db import transaction
+
+@transaction.atomic
+def create_subscription(self, user_id: str, plan_id: str) -> dict:
+    """Create subscription with transaction"""
+    user = User.objects.get(id=user_id)
+    plan = SubscriptionPlan.objects.get(id=plan_id)
+    
+    # Create subscription
+    subscription = Subscription.objects.create(
+        user=user,
+        plan=plan,
+        status=SubscriptionStatus.ACTIVE
+    )
+    
+    # Update user
+    user.subscription_plan = plan
+    user.subscription_status = SubscriptionStatus.ACTIVE
+    user.save()
+    
+    return subscription
 ```
 
 ## Next Steps
