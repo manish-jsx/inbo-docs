@@ -1,0 +1,494 @@
+---
+title: User App
+description: User management, profiles, onboarding, and dashboard data
+---
+
+# User App (`user_app`)
+
+The User App handles all user-related operations including profile management, onboarding, inbox creation, folder management, subscriptions, and comprehensive user data aggregation.
+
+## Overview
+
+The `user_app` is one of the most comprehensive apps in the INBO Backend, providing endpoints for user profile management, complete user data retrieval, onboarding flow, dashboard statistics, folder operations, subscription management, and user analytics.
+
+## Key Features
+
+- **Profile Management**: Get and update user profiles
+- **Complete User Data**: Aggregated endpoint returning all user-related data
+- **Onboarding Flow**: Complete onboarding with preferences and settings
+- **Inbox Management**: Create and manage @inbo.me email addresses
+- **Folder Operations**: Create, delete, and search folders
+- **Subscription Management**: Toggle subscriptions, subscribe/unsubscribe newsletters
+- **Dashboard Data**: Comprehensive dashboard statistics
+- **Analytics**: Reading insights, achievements, streaks
+- **Storage Info**: Track email storage usage
+
+## Services
+
+### UserService
+
+Main service for user operations.
+
+#### Key Methods
+
+**`get_user_profile(user_id: str) -> dict`**
+- Retrieves user profile with related data
+- Includes subscription, inbox, Gmail accounts
+- Returns formatted profile data
+
+**`get_complete_user_data(user_id: str) -> dict`**
+- Comprehensive user data aggregation
+- Includes: emails, newsletters, subscriptions, reading stats, devices, sessions, integrations, experiences, folders, inbox accounts
+- Optimized with select_related and prefetch_related
+- Returns complete user state
+
+**`complete_onboarding(user_id: str, data: dict) -> dict`**
+- Completes user onboarding process
+- Sets username, categories, reminder settings
+- Creates notification token
+- Updates user verification status
+
+**`check_inbox_availability(username: str) -> dict`**
+- Checks if @inbo.me username is available
+- Returns availability status
+
+**`create_inbox(user_id: str, username: str) -> dict`**
+- Creates @inbo.me email address
+- Validates username availability
+- Returns inbox email details
+
+**`get_dashboard_data(user_id: str) -> dict`**
+- Aggregates dashboard statistics
+- Includes: email counts, reading stats, streaks, subscriptions, storage info
+- Returns formatted dashboard data
+
+**`get_folders(user_id: str) -> dict`**
+- Retrieves all user folders
+- Returns folder list with email counts
+
+**`create_folder(user_id: str, folder_name: str) -> dict`**
+- Creates new email folder
+- Validates folder name
+- Returns folder details
+
+**`delete_folder(user_id: str, folder_name: str) -> dict`**
+- Deletes folder
+- Moves emails to inbox
+- Returns success status
+
+## API Endpoints
+
+### User Profile
+
+#### GET `/api/user/profile/`
+Get user profile.
+
+**Response** (200):
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "email": "user@example.com",
+  "username": "johndoe",
+  "name": "John Doe",
+  "avatar": "https://...",
+  "isVerified": true,
+  "subscription": {
+    "plan": "premium",
+    "status": "active"
+  },
+  "inboxEmails": ["john@inbo.me"],
+  "gmailAccounts": []
+}
+```
+
+#### PUT `/api/user/profile/`
+Update user profile.
+
+**Request Body**:
+```json
+{
+  "name": "John Doe",
+  "username": "johndoe",
+  "avatar": "https://..."
+}
+```
+
+### Complete User Data
+
+#### GET `/api/user/complete-data/`
+Get complete user data (all related information).
+
+**Response** (200):
+```json
+{
+  "user": {
+    "id": "...",
+    "email": "...",
+    "username": "..."
+  },
+  "emails": {
+    "total": 100,
+    "unread": 10,
+    "favorites": 5
+  },
+  "newsletters": [...],
+  "subscriptions": [...],
+  "readingStats": {...},
+  "devices": [...],
+  "sessions": [...],
+  "integrations": [...],
+  "experiences": [...],
+  "folders": [...],
+  "inboxAccounts": [...]
+}
+```
+
+### Onboarding
+
+#### POST `/api/user/onboarding/`
+Complete user onboarding.
+
+**Request Body**:
+```json
+{
+  "username": "johndoe",
+  "categories": ["Tech", "Startups", "Business"],
+  "reminder": "after_waking_up",
+  "reminderTime": "06:00",
+  "whereHeard": "app_store",
+  "notificationToken": "fcm-token-here"
+}
+```
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "message": "Onboarding completed successfully",
+  "user": {
+    "id": "...",
+    "email": "...",
+    "username": "johndoe",
+    "isVerified": true
+  }
+}
+```
+
+#### GET `/api/user/onboarding/status/`
+Check onboarding status.
+
+**Response** (200):
+```json
+{
+  "isComplete": true,
+  "hasUsername": true,
+  "hasCategories": true,
+  "categoryCount": 3
+}
+```
+
+### Inbox Management
+
+#### GET `/api/user/check-inbox-availability/`
+Check if username is available for @inbo.me inbox.
+
+**Query Parameters**:
+- `username` (required): Username to check
+
+**Response** (200):
+```json
+{
+  "available": true,
+  "suggestions": ["johndoe1", "johndoe2", "johndoe3"]
+}
+```
+
+#### POST `/api/user/create-inbox/`
+Create @inbo.me email address.
+
+**Request Body**:
+```json
+{
+  "username": "johndoe"
+}
+```
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "email": "johndoe@inbo.me",
+  "message": "Inbox created successfully"
+}
+```
+
+#### GET `/api/user/inbox-accounts/`
+Get all inbox accounts for user.
+
+**Response** (200):
+```json
+{
+  "accounts": [
+    {
+      "id": "...",
+      "email": "johndoe@inbo.me",
+      "createdAt": "2024-01-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+### Dashboard
+
+#### GET `/api/user/dashboard-data/`
+Get dashboard statistics.
+
+**Response** (200):
+```json
+{
+  "emails": {
+    "total": 100,
+    "unread": 10,
+    "favorites": 5,
+    "readLater": 3
+  },
+  "reading": {
+    "totalTime": 3600,
+    "totalWords": 50000,
+    "streak": 7
+  },
+  "subscriptions": {
+    "total": 15,
+    "active": 12
+  },
+  "storage": {
+    "used": 1024,
+    "limit": 5120,
+    "percentage": 20
+  }
+}
+```
+
+### Folders
+
+#### GET `/api/user/folders/`
+Get all folders.
+
+**Response** (200):
+```json
+{
+  "folders": [
+    {
+      "id": "...",
+      "name": "Work",
+      "emailCount": 25
+    }
+  ]
+}
+```
+
+#### POST `/api/user/folder/<folder_name>/`
+Create folder.
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "folder": {
+    "id": "...",
+    "name": "Work",
+    "emailCount": 0
+  }
+}
+```
+
+#### DELETE `/api/user/folder/<folder_name>/`
+Delete folder.
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "message": "Folder deleted successfully"
+}
+```
+
+### Subscriptions
+
+#### GET `/api/user/subscriptions/`
+Get all newsletter subscriptions.
+
+**Response** (200):
+```json
+{
+  "subscriptions": [
+    {
+      "id": "...",
+      "newsletter": {
+        "name": "Tech Weekly",
+        "sender": "tech@example.com"
+      },
+      "isActive": true
+    }
+  ]
+}
+```
+
+#### POST `/api/user/toggle-subscription/`
+Toggle newsletter subscription.
+
+**Request Body**:
+```json
+{
+  "newsletterId": "...",
+  "isActive": true
+}
+```
+
+### Analytics & Insights
+
+#### GET `/api/user/reading-insights/`
+Get reading insights and achievements.
+
+**Response** (200):
+```json
+{
+  "streak": {
+    "current": 7,
+    "longest": 30
+  },
+  "achievements": [...],
+  "insights": {
+    "totalTime": 3600,
+    "totalWords": 50000,
+    "averagePerDay": 500
+  }
+}
+```
+
+## Data Models
+
+### User Profile Data Structure
+
+```python
+{
+    "id": str,
+    "email": str,
+    "username": str,
+    "name": str,
+    "avatar": str,
+    "isVerified": bool,
+    "isInboxCreated": bool,
+    "isGmailConnected": bool,
+    "subscription": {
+        "plan": str,
+        "status": str
+    },
+    "inboxEmails": [str],
+    "gmailAccounts": [dict]
+}
+```
+
+### Complete User Data Structure
+
+The `complete-user-data` endpoint returns a comprehensive object containing:
+
+- **User**: Basic user information
+- **Emails**: Email statistics and counts
+- **Newsletters**: Newsletter subscriptions
+- **Subscriptions**: Active subscriptions
+- **Reading Stats**: Reading statistics and streaks
+- **Devices**: Registered devices
+- **Sessions**: Active sessions
+- **Integrations**: Connected integrations (Pocket, Notion, etc.)
+- **Experiences**: Experience orchestration data
+- **Folders**: Email folders
+- **Inbox Accounts**: @inbo.me email addresses
+- **Recommendations**: Recommendation features
+- **Newsletter Profiles**: Newsletter preferences
+
+## Usage Examples
+
+### Get Complete User Data
+
+```python
+import requests
+
+headers = {
+    'Authorization': 'Bearer <access_token>'
+}
+
+response = requests.get(
+    'https://api.inbo.me/api/user/complete-data/',
+    headers=headers
+)
+
+user_data = response.json()
+print(f"Total emails: {user_data['emails']['total']}")
+print(f"Reading streak: {user_data['readingStats']['streak']}")
+```
+
+### Complete Onboarding
+
+```python
+response = requests.post(
+    'https://api.inbo.me/api/user/onboarding/',
+    headers=headers,
+    json={
+        'username': 'johndoe',
+        'categories': ['Tech', 'Startups'],
+        'reminder': 'after_waking_up',
+        'reminderTime': '06:00',
+        'whereHeard': 'app_store',
+        'notificationToken': 'fcm-token'
+    }
+)
+```
+
+### Create Inbox
+
+```python
+# Check availability
+response = requests.get(
+    'https://api.inbo.me/api/user/check-inbox-availability/',
+    headers=headers,
+    params={'username': 'johndoe'}
+)
+
+if response.json()['available']:
+    # Create inbox
+    response = requests.post(
+        'https://api.inbo.me/api/user/create-inbox/',
+        headers=headers,
+        json={'username': 'johndoe'}
+    )
+```
+
+## Integration
+
+### With Email App
+- Links emails to user folders
+- Tracks email statistics
+- Manages email organization
+
+### With Reading App
+- Aggregates reading statistics
+- Tracks reading streaks
+- Provides reading insights
+
+### With Subscription App
+- Manages subscription plans
+- Tracks subscription status
+- Handles subscription changes
+
+### With Directory App
+- Links newsletter subscriptions
+- Manages newsletter preferences
+- Provides newsletter recommendations
+
+## Related Documentation
+
+- [Authentication App](/docs/backend/apps/auth-app)
+- [Email App](/docs/backend/apps/email-app)
+- [Reading App](/docs/backend/apps/reading-app)
+- [API Reference](/openapi/api-reference)

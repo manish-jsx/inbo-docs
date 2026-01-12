@@ -1,0 +1,371 @@
+---
+title: Core App
+description: Base models, shared utilities, and core functionality
+---
+
+# Core App (`core`)
+
+The Core App provides the foundation for the INBO Backend, containing base models, shared utilities, and core functionality used across all other apps.
+
+## Overview
+
+The `core` app is the foundation of the INBO Backend, providing:
+- **Custom User Model**: Extends Django's AbstractBaseUser with email as username
+- **Base Models**: Email, Newsletter, Folder, InboxEmail, ReadingStats
+- **Device & Session Tracking**: UserDevice and UserSession models
+- **Shared Utilities**: Common fields, validators, and helpers
+- **Admin Dashboard**: Custom admin dashboard with KPIs
+
+## Key Models
+
+### User
+
+**Table**: `users`
+
+**Purpose**: Main user account model (extends AbstractBaseUser)
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `email` (EmailField) - Unique email address (USERNAME_FIELD)
+- `name` (CharField) - User's display name
+- `is_verified` (Boolean) - Email verification status
+- `inbox_username` (CharField) - @inbo.me username (e.g., "john" for "john@inbo.me")
+- `onboarding_completed` (Boolean) - Onboarding completion status
+- `subscription_plan` (ForeignKey) - Current subscription plan
+- `subscription_status` (CharField) - Subscription status (FREE, ACTIVE, TRIALING, etc.)
+- `streak_count` (Integer) - Current reading streak
+- `longest_streak` (Integer) - Longest streak achieved
+- `storage_used` (BigInteger) - Storage used in bytes
+- `summarization_used` (Integer) - AI summarization usage count
+- `fcm_token` (CharField) - Firebase Cloud Messaging token for push notifications
+
+**Key Methods**:
+- `username` (property) - Returns inbox_username or email prefix
+- `get_full_name()` - Returns name or email
+- `get_short_name()` - Returns name or email
+
+**Relationships**:
+- One-to-Many: `inbox_emails`, `emails`, `folders`, `devices`, `sessions`, `reading_stats`
+- Foreign Key: `subscription_plan` → SubscriptionPlan
+- Many-to-Many: `groups`, `user_permissions`
+
+### Email
+
+**Table**: `emails`
+
+**Purpose**: Email messages
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `sender` (CharField) - Sender email address
+- `recipient` (ForeignKey) - Recipient InboxEmail
+- `subject` (TextField) - Email subject
+- `content_preview` (TextField) - Email content preview
+- `date_received` (DateTime) - Received timestamp
+- `storage_path` (CharField) - Azure Blob Storage path
+- `is_read` (Boolean) - Read status
+- `is_favorite` (Boolean) - Favorite status
+- `is_read_later` (Boolean) - Read later status
+- `reading_progress` (Integer) - Reading progress (0-100)
+- `time_spent` (Integer) - Time spent reading (seconds)
+- `words_count` (Integer) - Word count
+- `is_shared` (Boolean) - Public sharing status
+- `folder` (ForeignKey) - Folder assignment
+- `categories` (JSONField) - Email categories
+
+**Relationships**:
+- Many-to-One: `user` → User
+- Many-to-One: `recipient` → InboxEmail
+- Many-to-One: `folder` → Folder
+- Many-to-Many: `newsletters` → Newsletter (via NewsletterEmail)
+- One-to-Many: `highlights` → EmailHighlight
+- One-to-One: `summary` → EmailSummary
+
+### Newsletter
+
+**Table**: `newsletters`
+
+**Purpose**: Newsletter subscriptions (inbox-based)
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `name` (CharField) - Newsletter name
+- `sender_email` (EmailField) - Sender email
+- `recipient_email` (EmailField) - Recipient @inbo.me email
+- `first_received` (DateTime) - First email received
+- `last_received` (DateTime) - Last email received
+- `email_count` (Integer) - Total emails
+- `is_accepted` (Boolean) - Acceptance status
+
+**Relationships**:
+- Many-to-One: `user` → User
+- Many-to-Many: `emails` → Email (via NewsletterEmail)
+
+### Folder
+
+**Table**: `folders`
+
+**Purpose**: User email folders
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `name` (CharField) - Folder name
+- `created_at` (DateTime) - Creation timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+- One-to-Many: `emails` → Email
+
+### InboxEmail
+
+**Table**: `inbox_emails`
+
+**Purpose**: @inbo.me email addresses
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `email` (CharField) - Username part (e.g., "john" for "john@inbo.me")
+- `created_at` (DateTime) - Creation timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+- One-to-Many: `emails` → Email
+
+### ReadingStats
+
+**Table**: `reading_stats`
+
+**Purpose**: Daily reading statistics
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `date` (Date) - Statistics date
+- `emails_read` (Integer) - Emails read
+- `time_spent` (Integer) - Time spent (seconds)
+- `words_read` (Integer) - Words read
+- `streak_count` (Integer) - Streak on this date
+
+**Relationships**:
+- Many-to-One: `user` → User
+
+### UserDevice
+
+**Table**: `user_devices`
+
+**Purpose**: Device tracking
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `device_id` (CharField) - Device identifier (unique)
+- `device_name` (CharField) - Device name
+- `device_info` (JSONField) - Device information
+- `ip_address` (GenericIPAddressField) - IP address
+- `is_active` (Boolean) - Active status
+- `last_active_at` (DateTime) - Last active timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+- One-to-Many: `sessions` → UserSession
+
+### UserSession
+
+**Table**: `user_sessions`
+
+**Purpose**: User sessions with refresh tokens
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `device` (ForeignKey) - Associated device
+- `refresh_token_hash` (CharField) - Hashed refresh token (unique)
+- `is_valid` (Boolean) - Session validity
+- `expires_at` (DateTime) - Expiration timestamp
+- `last_used_at` (DateTime) - Last used timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+- Many-to-One: `device` → UserDevice
+
+### VerificationRequest
+
+**Table**: `verification_requests`
+
+**Purpose**: OTP and verification requests
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User (nullable for OTP requests)
+- `email` (EmailField) - Email address
+- `token` (CharField) - Hashed token/OTP
+- `type` (CharField) - Verification type (EMAIL, OTP, FORGET_PASSWORD)
+- `created_at` (DateTime) - Request timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User (nullable)
+
+### EmailHighlight
+
+**Table**: `email_highlights`
+
+**Purpose**: Email highlights with notes
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `email` (ForeignKey) - Email
+- `text` (TextField) - Highlighted text
+- `note` (TextField) - Optional note
+- `created_at` (DateTime) - Creation timestamp
+
+**Relationships**:
+- Many-to-One: `email` → Email
+
+### EmailSummary
+
+**Table**: `email_summaries`
+
+**Purpose**: AI-generated email summaries
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `email` (OneToOneField) - Email
+- `summary` (TextField) - Summary text
+- `created_at` (DateTime) - Creation timestamp
+- `updated_at` (DateTime) - Last update
+
+**Relationships**:
+- One-to-One: `email` → Email
+
+### Waitlist
+
+**Table**: `waitlists`
+
+**Purpose**: Waitlist management
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `email` (EmailField) - Email address
+- `metadata` (JSONField) - Additional metadata
+- `created_at` (DateTime) - Creation timestamp
+
+## API Endpoints
+
+### Health Check
+
+#### GET `/`
+API information endpoint.
+
+**Response** (200):
+```json
+{
+  "name": "INBO Backend API",
+  "version": "1.0.0",
+  "status": "operational"
+}
+```
+
+#### GET `/health`
+Health check endpoint.
+
+**Response** (200):
+```json
+{
+  "status": "healthy",
+  "database": "connected",
+  "timestamp": "2025-01-24T10:00:00Z"
+}
+```
+
+## Admin Dashboard
+
+The core app provides a custom admin dashboard with KPIs:
+
+- **Total Users**: Count with 7-day growth
+- **Verified Users**: Count with verification rate
+- **Total Emails**: Count with 7-day volume
+- **Active Subscriptions**: Count with growth
+- **Storage Usage**: Total storage used
+
+Configured in `core/admin_dashboard.py` and enabled in `settings.py`:
+```python
+DASHBOARD_CALLBACK = "core.admin_dashboard.dashboard_callback"
+```
+
+## Signals
+
+### User Signup Tracking
+- Tracks user signup events
+- Logs signup analytics
+
+### Reading Behavior Tracking
+- Tracks reading behavior
+- Updates statistics
+
+## Shared Utilities
+
+### FlexibleJSONField
+Custom JSON field that handles both dict and list types.
+
+### Model Indexes
+All models have appropriate database indexes for:
+- Foreign keys
+- Frequently queried fields
+- Composite indexes for common query patterns
+
+## Database Constraints
+
+### Email Model
+- `reading_progress` must be between 0-100
+- `content_size` must be positive
+- `time_spent` must be non-negative
+
+### Unique Constraints
+- User email: unique
+- User inbox_username: unique
+- UserDevice device_id: unique
+- UserSession refresh_token_hash: unique
+- InboxEmail email: unique
+- Folder (user, name): unique together
+- Email (recipient, message_id): unique together
+
+## Usage Examples
+
+### Get User with Related Data
+
+```python
+from core.models import User
+
+user = User.objects.select_related(
+    'subscription_plan'
+).prefetch_related(
+    'inbox_emails',
+    'folders',
+    'devices',
+    'sessions'
+).get(id=user_id)
+```
+
+### Get User's Emails
+
+```python
+from core.models import Email
+
+emails = Email.objects.filter(
+    user=user,
+    is_deleted=False
+).select_related(
+    'recipient',
+    'folder'
+).order_by('-date_received')
+```
+
+## Related Documentation
+
+- [User App](/docs/backend/apps/user-app)
+- [Email App](/docs/backend/apps/email-app)
+- [Models Overview](/docs/backend/models/overview)
+- [API Reference](/openapi/api-reference)

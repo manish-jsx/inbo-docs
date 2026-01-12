@@ -1,0 +1,382 @@
+---
+title: Deployment
+description: Deployment guide for the INBO Frontend
+---
+
+# Deployment
+
+The INBO Frontend can be deployed to various platforms including Azure App Service, Vercel, and Docker containers.
+
+## Deployment Options
+
+### 1. Azure App Service
+
+#### Prerequisites
+- Azure account
+- Azure CLI installed
+- Docker (optional)
+
+#### Deployment Steps
+
+1. **Build the application**:
+```bash
+pnpm build
+```
+
+2. **Deploy using Azure CLI**:
+```bash
+# Login to Azure
+az login
+
+# Create resource group (if needed)
+az group create --name inbo-frontend-rg --location eastus
+
+# Create App Service plan
+az appservice plan create \
+  --name inbo-frontend-plan \
+  --resource-group inbo-frontend-rg \
+  --sku B1 \
+  --is-linux
+
+# Create Web App
+az webapp create \
+  --name inbo-frontend \
+  --resource-group inbo-frontend-rg \
+  --plan inbo-frontend-plan \
+  --runtime "NODE:18-lts"
+
+# Configure environment variables
+az webapp config appsettings set \
+  --name inbo-frontend \
+  --resource-group inbo-frontend-rg \
+  --settings \
+    NEXT_PUBLIC_API_BASE_URL=https://inbo-django-api.azurewebsites.net/api \
+    NEXT_PUBLIC_APP_URL=https://inbo-frontend.azurewebsites.net \
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+
+# Deploy from local Git
+az webapp deployment source config-local-git \
+  --name inbo-frontend \
+  --resource-group inbo-frontend-rg
+```
+
+3. **Deploy using deployment script**:
+```bash
+./DEPLOY_TO_AZURE.sh
+```
+
+#### Docker Deployment
+
+1. **Build Docker image**:
+```bash
+docker build -t inbo-frontend .
+```
+
+2. **Run container**:
+```bash
+docker run -p 3000:3000 \
+  -e NEXT_PUBLIC_API_BASE_URL=https://inbo-django-api.azurewebsites.net/api \
+  inbo-frontend
+```
+
+3. **Deploy to Azure Container Registry**:
+```bash
+# Login to ACR
+az acr login --name inboacr
+
+# Tag image
+docker tag inbo-frontend inboacr.azurecr.io/inbo-frontend:latest
+
+# Push image
+docker push inboacr.azurecr.io/inbo-frontend:latest
+
+# Update Web App to use container
+az webapp config container set \
+  --name inbo-frontend \
+  --resource-group inbo-frontend-rg \
+  --docker-custom-image-name inboacr.azurecr.io/inbo-frontend:latest
+```
+
+### 2. Vercel Deployment
+
+#### Prerequisites
+- Vercel account
+- Vercel CLI installed
+
+#### Deployment Steps
+
+1. **Install Vercel CLI**:
+```bash
+npm i -g vercel
+```
+
+2. **Deploy**:
+```bash
+vercel
+```
+
+3. **Configure environment variables** in Vercel dashboard:
+- `NEXT_PUBLIC_API_BASE_URL`
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+- `NEXT_PUBLIC_DEEP_LINK_SCHEME`
+- `NEXT_PUBLIC_APP_DOMAIN`
+
+4. **Production deployment**:
+```bash
+vercel --prod
+```
+
+### 3. Docker Deployment
+
+#### Dockerfile
+
+**File**: `Dockerfile`
+
+```dockerfile
+FROM node:18-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm
+RUN pnpm install --frozen-lockfile
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN pnpm build
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV production
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+EXPOSE 3000
+ENV PORT 3000
+CMD ["node", "server.js"]
+```
+
+#### Build and Run
+
+```bash
+# Build
+docker build -t inbo-frontend .
+
+# Run
+docker run -p 3000:3000 \
+  -e NEXT_PUBLIC_API_BASE_URL=https://inbo-django-api.azurewebsites.net/api \
+  inbo-frontend
+```
+
+## Environment Variables
+
+### Required Variables
+
+```bash
+# API Configuration
+NEXT_PUBLIC_API_BASE_URL=https://inbo-django-api.azurewebsites.net/api
+NEXT_PUBLIC_APP_URL=https://inbo.app
+
+# OAuth Configuration
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+
+# Deep Linking
+NEXT_PUBLIC_DEEP_LINK_SCHEME=inbo://
+NEXT_PUBLIC_APP_DOMAIN=inbo.app
+
+# CORS (optional)
+NEXT_PUBLIC_ALLOWED_ORIGIN=https://inbo.app
+```
+
+### Production Configuration
+
+Set environment variables in your deployment platform:
+
+**Azure App Service**:
+```bash
+az webapp config appsettings set \
+  --name inbo-frontend \
+  --resource-group inbo-frontend-rg \
+  --settings \
+    NEXT_PUBLIC_API_BASE_URL=https://inbo-django-api.azurewebsites.net/api \
+    NEXT_PUBLIC_APP_URL=https://inbo.app
+```
+
+**Vercel**:
+Set in Vercel dashboard under Project Settings → Environment Variables
+
+## Build Configuration
+
+### Next.js Config
+
+**File**: `next.config.js`
+
+```javascript
+const nextConfig = {
+  reactStrictMode: true,
+  output: 'standalone', // For Docker deployment
+  
+  env: {
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  },
+  
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_BASE_URL}/:path*`,
+      },
+    ];
+  },
+};
+```
+
+## Build Process
+
+### Development Build
+
+```bash
+pnpm dev
+```
+
+### Production Build
+
+```bash
+# Build
+pnpm build
+
+# Start production server
+pnpm start
+```
+
+### Standalone Build
+
+For Docker deployment, Next.js generates a standalone build:
+
+```bash
+pnpm build
+# Output: .next/standalone/
+```
+
+## Deployment Checklist
+
+### Pre-Deployment
+
+- [ ] Update environment variables
+- [ ] Test production build locally
+- [ ] Verify API endpoints
+- [ ] Check CORS configuration
+- [ ] Test authentication flow
+- [ ] Verify OAuth redirects
+- [ ] Test deep linking
+
+### Post-Deployment
+
+- [ ] Verify application loads
+- [ ] Test authentication
+- [ ] Check API connectivity
+- [ ] Verify environment variables
+- [ ] Test mobile responsiveness
+- [ ] Check SEO meta tags
+- [ ] Verify analytics tracking
+
+## CI/CD Pipeline
+
+### GitHub Actions Example
+
+```yaml
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm install -g pnpm
+      - run: pnpm install
+      - run: pnpm build
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: inbo-frontend
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+```
+
+## Performance Optimization
+
+### 1. Static Generation
+- Pre-render static pages
+- Use `getStaticProps` for static data
+- Use ISR for dynamic content
+
+### 2. Image Optimization
+- Use Next.js Image component
+- Optimize image sizes
+- Use appropriate formats (WebP)
+
+### 3. Code Splitting
+- Automatic route-based splitting
+- Dynamic imports for heavy components
+- Lazy load components
+
+### 4. Caching
+- Static assets caching
+- API response caching (future)
+- Browser caching headers
+
+## Monitoring
+
+### Error Tracking
+- Set up error tracking (Sentry, etc.)
+- Monitor API errors
+- Track user errors
+
+### Analytics
+- Google Analytics
+- User behavior tracking
+- Performance monitoring
+
+### Logging
+- Application logs
+- API request logs
+- Error logs
+
+## Troubleshooting
+
+### Common Issues
+
+#### Build Failures
+- Check Node.js version (18+)
+- Verify dependencies
+- Check environment variables
+
+#### API Connection Issues
+- Verify `NEXT_PUBLIC_API_BASE_URL`
+- Check CORS configuration
+- Verify API endpoints
+
+#### Authentication Issues
+- Check token storage
+- Verify cookie settings
+- Check redirect URLs
+
+## Related Documentation
+
+- [Introduction](/docs/frontend/introduction) - Getting started
+- [Architecture](/docs/frontend/architecture) - System architecture
+- [Backend Deployment](/docs/backend/deployment/overview) - Backend deployment

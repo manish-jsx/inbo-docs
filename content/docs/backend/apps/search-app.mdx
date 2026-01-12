@@ -1,0 +1,272 @@
+---
+title: Search App
+description: Full-text search using Bonsai.io (Elasticsearch) with Redis caching
+---
+
+# Search App (`search_app`)
+
+The Search App provides comprehensive full-text search capabilities across newsletters, emails, posts, and inbox addresses using Bonsai.io (Elasticsearch-as-a-Service) with Redis caching for performance optimization.
+
+## Overview
+
+The `search_app` implements a high-performance search system with:
+- **Bonsai.io Integration**: Elasticsearch-as-a-Service for indexing and searching
+- **Redis Caching**: 60-80% cache hit rate, reducing API costs
+- **Auto-Indexing**: Django signals automatically index on model save/delete
+- **Fallback Support**: Graceful fallback to PostgreSQL if Bonsai.io is unavailable
+
+## Architecture
+
+See [Search Architecture Documentation](/docs/backend/architecture/search-architecture) for detailed architecture diagrams and flow.
+
+## Key Features
+
+- **Unified Search**: Search across all content types
+- **Global Search**: Newsletter providers (public directory)
+- **User-Level Search**: Emails, newsletters, posts, inbox emails (user-scoped)
+- **Redis Caching**: 5-minute TTL, 60-80% hit rate
+- **Auto-Indexing**: Real-time indexing via Django signals
+- **Fallback**: PostgreSQL fallback if search service unavailable
+
+## Search Indexes
+
+### 1. Newsletter Providers (Global)
+- **Index**: `newsletter_providers`
+- **Scope**: Global (all users)
+- **Fields**: name, description, author, categories, tags, tones, etc.
+
+### 2. Emails (User-Level)
+- **Index**: `emails`
+- **Scope**: User-scoped (filtered by `user_id`)
+- **Fields**: sender, subject, content_preview, date_received, etc.
+
+### 3. Newsletters (User-Level)
+- **Index**: `newsletters`
+- **Scope**: User-scoped
+- **Fields**: name, sender_email, email_count, etc.
+
+### 4. Newsletter Posts (User-Level)
+- **Index**: `newsletter_posts`
+- **Scope**: User-scoped
+- **Fields**: title, description, content_preview, published_at, etc.
+
+### 5. Inbox Emails (User-Level)
+- **Index**: `inbox_emails`
+- **Scope**: User-scoped
+- **Fields**: email, user_id, created_at
+
+## API Endpoints
+
+### Unified Search
+
+#### GET `/api/search/unified/`
+Search across all content types.
+
+**Query Parameters**:
+- `q` (required): Search query
+- `types` (optional): Comma-separated list (providers, emails, posts, newsletters)
+- `page` (optional): Page number (default: 1)
+- `page_size` (optional): Results per page (default: 20)
+
+**Response** (200):
+```json
+{
+  "providers": {
+    "results": [...],
+    "total": 10
+  },
+  "emails": {
+    "results": [...],
+    "total": 5
+  },
+  "posts": {
+    "results": [...],
+    "total": 3
+  }
+}
+```
+
+### Newsletter Provider Search
+
+#### GET `/api/search/providers/search/`
+Search newsletter providers (global search).
+
+**Query Parameters**:
+- `q` (required): Search query
+- `categories` (optional): Filter by categories
+- `tags` (optional): Filter by tags
+- `language` (optional): Filter by language
+- `page` (optional): Page number
+- `page_size` (optional): Results per page
+
+**Response** (200):
+```json
+{
+  "results": [
+    {
+      "id": "...",
+      "name": "Tech Weekly",
+      "description": "...",
+      "categories": ["Tech"],
+      "score": 0.95
+    }
+  ],
+  "total": 10,
+  "page": 1
+}
+```
+
+### Email Search
+
+#### GET `/api/search/emails/search/`
+Search user's emails (automatically filtered by authenticated user).
+
+**Query Parameters**:
+- `q` (required): Search query
+- `folder_id` (optional): Filter by folder
+- `is_read` (optional): Filter by read status
+- `is_favorite` (optional): Filter by favorite status
+- `page` (optional): Page number
+- `page_size` (optional): Results per page
+
+### Newsletter Post Search
+
+#### GET `/api/search/posts/search/`
+Search newsletter posts (automatically filtered by authenticated user).
+
+**Query Parameters**:
+- `q` (required): Search query
+- `preference_id` (optional): Filter by newsletter preference
+- `is_read` (optional): Filter by read status
+- `page` (optional): Page number
+- `page_size` (optional): Results per page
+
+## Caching Strategy
+
+### Redis Cache Configuration
+
+- **Cache Key Format**: `search:{index_name}:{md5_hash_of_query_body}`
+- **Default TTL**: 300 seconds (5 minutes)
+- **Hit Rate**: 60-80% of queries
+- **Cost Savings**: 60-80% reduction in Bonsai.io API calls
+
+### Cache Functions
+
+Located in `search_app/cached_search.py`:
+
+- `cached_search()`: Main caching function
+- `multi_match_search()`: Cached multi-field search
+- `filtered_search()`: Cached filtered search
+- `invalidate_search_cache()`: Manual cache invalidation
+
+### Cache Invalidation
+
+- **Automatic**: Triggered by Django signals on model save/delete
+- **Pattern-based**: Can invalidate by index or pattern
+- **Selective**: Only invalidates relevant cache keys
+
+## Indexing
+
+### Auto-Indexing
+
+Django signals automatically trigger indexing:
+- On model save: Index document
+- On model delete: Remove from index
+- Uses `CustomSignalProcessor` with error handling
+
+### Manual Indexing
+
+```bash
+# Rebuild all indexes
+python manage.py rebuild_search_index
+
+# Rebuild specific index
+python manage.py rebuild_search_index --index emails
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Bonsai.io Configuration
+BONSAI_URL=https://username:password@your-cluster.bonsaisearch.net
+
+# Or use separate credentials
+OPENSEARCH_HOST=https://your-cluster.bonsaisearch.net
+OPENSEARCH_USER=your_username
+OPENSEARCH_PASSWORD=your_password
+
+# Redis Configuration (for caching)
+REDIS_URL=redis://localhost:6379/0
+CACHE_BACKEND=django_redis.cache.RedisCache
+CACHE_LOCATION=redis://localhost:6379/1
+
+# Elasticsearch DSL Configuration
+ELASTICSEARCH_AUTOSYNC=True
+ELASTICSEARCH_AUTO_REFRESH=True
+```
+
+## Fallback Behavior
+
+### Bonsai.io Unavailable
+- Application continues to work
+- Search falls back to PostgreSQL database queries
+- Uses `ILIKE` for case-insensitive text matching
+- Errors are logged but don't crash the application
+
+### Redis Cache Unavailable
+- Search queries proceed directly to Bonsai.io
+- No caching occurs (increased API costs)
+- Application continues to function normally
+
+## Usage Examples
+
+### Unified Search
+
+```python
+import requests
+
+headers = {'Authorization': 'Bearer <access_token>'}
+
+response = requests.get(
+    'https://api.inbo.me/api/search/unified/',
+    headers=headers,
+    params={
+        'q': 'tech newsletter',
+        'types': 'providers,emails',
+        'page': 1,
+        'page_size': 20
+    }
+)
+
+results = response.json()
+```
+
+### Provider Search
+
+```python
+response = requests.get(
+    'https://api.inbo.me/api/search/providers/search/',
+    headers=headers,
+    params={
+        'q': 'startup',
+        'categories': 'Tech,Business',
+        'page': 1
+    }
+)
+```
+
+## Performance
+
+- **Cache Hit Response**: < 10ms
+- **Cache Miss Response**: 50-200ms (depending on query complexity)
+- **Cache Hit Rate**: 60-80%
+- **Cost Reduction**: 60-80% reduction in Bonsai.io API calls
+
+## Related Documentation
+
+- [Search Architecture](/docs/backend/architecture/search-architecture)
+- [Directory App](/docs/backend/apps/directory-app)
+- [Email App](/docs/backend/apps/email-app)
+- [API Reference](/openapi/api-reference)

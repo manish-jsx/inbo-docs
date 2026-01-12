@@ -1,0 +1,261 @@
+---
+title: Reading App
+description: Reading statistics, logs, and streak management
+---
+
+# Reading App (`reading_app`)
+
+The Reading App tracks reading statistics, manages reading logs, and handles reading streaks to gamify the reading experience.
+
+## Overview
+
+The `reading_app` provides comprehensive reading analytics:
+- **Reading Logs**: Track daily reading activity
+- **Reading Statistics**: Aggregate reading metrics
+- **Streak Management**: Track and manage reading streaks
+- **Time Tracking**: Monitor time spent reading
+- **Word Count Tracking**: Track words read
+
+## Key Models
+
+### ReadingStats
+
+**Table**: `reading_stats`
+
+**Purpose**: Daily reading statistics
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `date` (Date) - Statistics date
+- `total_emails` (Integer) - Total emails read
+- `today_read` (Integer) - Emails read today
+- `previous_read` (Integer) - Emails read previous day
+- `total_time_spent` (Integer) - Time spent reading (seconds)
+- `total_words_read` (Integer) - Words read
+- `created_at` (DateTime) - Creation timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+
+## Services
+
+### ReadingService
+
+**Purpose**: Reading logs and statistics
+
+**Key Methods**:
+- `create_reading_log(user_id, email_id, time_spent, words_read)` - Create reading log entry
+- `get_reading_logs(user_id, page, limit)` - Get paginated reading logs
+- `get_reading_logs_by_date_range(user_id, start_date, end_date)` - Get logs by date range
+- `get_reading_statistics(user_id)` - Get comprehensive reading statistics
+
+### StreakService
+
+**Purpose**: Reading streak management
+
+**Key Methods**:
+- `get_streak_count(user_id)` - Get current streak count
+- `increment_streak(user_id)` - Increment streak (idempotent)
+- `get_longest_streak(user_id)` - Get longest streak
+- `reset_streak(user_id)` - Reset streak
+
+## API Endpoints
+
+### Reading Logs
+
+#### POST `/api/reading/logs/`
+Create a reading log entry.
+
+**Request Body**:
+```json
+{
+  "emailId": "123e4567-e89b-12d3-a456-426614174000",
+  "timeSpent": 300,
+  "wordsRead": 500
+}
+```
+
+**Response** (201):
+```json
+{
+  "id": "...",
+  "totalTimeSpent": 300,
+  "totalWordsRead": 500,
+  "todayRead": 1,
+  "createdAt": "2025-01-24T10:00:00Z"
+}
+```
+
+#### GET `/api/reading/logs/`
+Get paginated reading logs.
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Results per page (default: 20)
+
+**Response** (200):
+```json
+{
+  "data": [
+    {
+      "id": "...",
+      "totalEmails": 10,
+      "todayRead": 5,
+      "previousRead": 3,
+      "totalTimeSpent": 1800,
+      "totalWordsRead": 3000,
+      "createdAt": "2025-01-24T10:00:00Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20
+}
+```
+
+#### GET `/api/reading/logs/range/`
+Get reading logs by date range.
+
+**Query Parameters**:
+- `startDate` (required): Start date (YYYY-MM-DD)
+- `endDate` (required): End date (YYYY-MM-DD)
+
+**Response** (200):
+```json
+{
+  "data": [...],
+  "startDate": "2025-01-01",
+  "endDate": "2025-01-31"
+}
+```
+
+### Reading Statistics
+
+#### GET `/api/reading/statistics/`
+Get comprehensive reading statistics.
+
+**Response** (200):
+```json
+{
+  "streakCount": 5,
+  "longestStreak": 10,
+  "todayTimeSpent": 300,
+  "todayWordsRead": 500,
+  "totalTimeSpent": 3600,
+  "totalWordsRead": 50000,
+  "totalDays": 30
+}
+```
+
+### Streak Management
+
+#### POST `/api/reading/streak/increment/`
+Increment reading streak (idempotent - safe to call multiple times per day).
+
+**Response** (200):
+```json
+{
+  "count": 5,
+  "isToday": true
+}
+```
+
+#### GET `/api/reading/streak/`
+Get streak information.
+
+**Response** (200):
+```json
+{
+  "currentStreak": 5,
+  "longestStreak": 10,
+  "lastStreakDate": "2025-01-24"
+}
+```
+
+## Streak Logic
+
+### Incrementing Streaks
+
+- **Idempotent**: Safe to call multiple times per day
+- **Daily Limit**: Only increments once per day
+- **Consecutive Days**: Streak continues if user reads on consecutive days
+- **Reset**: Streak resets if user misses a day
+
+### Streak Calculation
+
+1. Check if user read today
+2. If yes and last streak date was yesterday: increment streak
+3. If yes and last streak date was today: no change (idempotent)
+4. If yes and last streak date was > 1 day ago: reset to 1
+5. Update `last_streak_date` and `streak_count`
+6. Update `longest_streak` if current streak > longest
+
+## Usage Examples
+
+### Create Reading Log
+
+```python
+import requests
+
+headers = {'Authorization': 'Bearer <access_token>'}
+
+response = requests.post(
+    'https://api.inbo.me/api/reading/logs/',
+    headers=headers,
+    json={
+        'emailId': 'email-id',
+        'timeSpent': 300,
+        'wordsRead': 500
+    }
+)
+```
+
+### Get Reading Statistics
+
+```python
+response = requests.get(
+    'https://api.inbo.me/api/reading/statistics/',
+    headers=headers
+)
+
+stats = response.json()
+print(f"Current streak: {stats['streakCount']}")
+print(f"Total time: {stats['totalTimeSpent']} seconds")
+```
+
+### Increment Streak
+
+```python
+# Safe to call multiple times - only increments once per day
+response = requests.post(
+    'https://api.inbo.me/api/reading/streak/increment/',
+    headers=headers
+)
+
+streak = response.json()
+print(f"Current streak: {streak['count']}")
+```
+
+## Integration
+
+### With User App
+- Updates user's `streak_count` and `longest_streak`
+- Aggregates reading statistics for dashboard
+- Provides reading insights
+
+### With Email App
+- Tracks reading progress from emails
+- Links reading logs to emails
+- Updates email reading statistics
+
+### With Core Models
+- Uses `ReadingStats` model for daily statistics
+- Updates `User.streak_count` and `User.longest_streak`
+- Links to `Email` model for reading tracking
+
+## Related Documentation
+
+- [User App](/docs/backend/apps/user-app)
+- [Email App](/docs/backend/apps/email-app)
+- [Core App](/docs/backend/apps/core-app)
+- [API Reference](/openapi/api-reference)

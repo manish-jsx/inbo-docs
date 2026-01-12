@@ -1,0 +1,79 @@
+---
+title: AI App
+description: AI-powered features using OpenAI
+---
+
+# AI App (`ai_app`)
+
+The AI App provides AI-powered features including email summarization, highlight generation, and sentiment analysis using OpenAI.
+
+## Overview
+
+The `ai_app` is a service-only app (no models or API endpoints) that provides:
+- **Email Summarization**: Generate concise email summaries
+- **Highlight Generation**: Extract key highlights from content
+- **Sentiment Analysis**: Analyze email sentiment
+- **Content Generation**: Generate content using AI
+
+## Services
+
+### AIService
+
+**Purpose**: AI operations using OpenAI
+
+**Key Methods**:
+- `generate_summary(content, max_length)` - Generate email summary
+- `generate_highlights(content, num_highlights)` - Generate highlights
+- `analyze_sentiment(content)` - Analyze sentiment
+
+## Usage
+
+### Email Summarization
+
+Used by `email_app` for generating email summaries:
+
+```python
+from ai_app.services import AIService
+
+ai_service = AIService()
+summary = ai_service.generate_summary(email_content, max_length=200)
+```
+
+### Highlight Generation
+
+Generate key highlights from content:
+
+```python
+highlights = ai_service.generate_highlights(content, num_highlights=3)
+```
+
+### Sentiment Analysis
+
+Analyze email sentiment:
+
+```python
+sentiment = ai_service.analyze_sentiment(content)
+# Returns: {'sentiment': 'positive' | 'negative' | 'neutral'}
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# OpenAI Configuration
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-3.5-turbo  # Default model
+```
+
+## Integration
+
+### With Email App
+- Used for email summarization
+- Generates summaries stored in EmailSummary model
+- Called from EmailService.summarize_email()
+
+## Related Documentation
+
+- [Email App](/docs/backend/apps/email-app)
+- [Core App](/docs/backend/apps/core-app)

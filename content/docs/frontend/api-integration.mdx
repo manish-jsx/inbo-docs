@@ -1,0 +1,480 @@
+---
+title: API Integration
+description: Backend API integration and service layer
+---
+
+# API Integration
+
+The INBO Frontend integrates with the Django REST API through a service-oriented architecture with automatic token management and error handling.
+
+## API Client Configuration
+
+### Axios Instance
+**File**: `utils/api.ts`
+
+```typescript
+const apiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-django-api.azurewebsites.net/api',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+    'API-Version': 'v1',
+  },
+});
+```
+
+### Request Interceptor
+- **Trailing Slash**: Adds trailing slash to URLs (Django convention)
+- **Token Injection**: Automatically adds Bearer token from cookies
+- **Headers**: Sets Authorization header
+
+```typescript
+apiClient.interceptors.request.use((config) => {
+  // Add trailing slash
+  if (config.url && !config.url.endsWith('/') && !config.url.includes('?')) {
+    config.url += '/';
+  }
+  
+  // Add auth token
+  const token = Cookies.get('access_token');
+  if (token && config.headers) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
+
+### Response Interceptor
+- **Token Refresh**: Automatically refreshes token on 401
+- **Error Formatting**: Formats error responses
+- **Redirect**: Redirects to login on auth failure
+
+```typescript
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    // Handle 401 - Token refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // Refresh token logic
+      const refreshToken = Cookies.get('refresh_token');
+      if (refreshToken) {
+        const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
+          refreshToken,
+        });
+        // Update tokens and retry request
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+```
+
+## Service Layer
+
+### Service Architecture
+
+All API calls go through service layer:
+
+```typescript
+// Service pattern
+class EmailService {
+  async getInboxEmails(params): Promise<EmailListResponse> {
+    return apiClient.get('/email/inbox/', { params });
+  }
+}
+```
+
+### Available Services
+
+#### AuthService
+**File**: `services/auth.ts`
+
+**Methods**:
+- `login(credentials)` - Email/password login
+- `register(data)` - User registration
+- `logout()` - User logout
+- `getCurrentUser()` - Get user profile
+- `refreshToken()` - Refresh access token
+- `validateSession()` - Validate session
+- `requestOTP({ email, phone })` - Request OTP
+- `verifyOTP(data)` - Verify OTP
+- `requestMagicLink({ email })` - Request magic link
+- `verifyMagicLink(token)` - Verify magic link
+- `googleAuth(data)` - Google OAuth
+- `appleAuth(data)` - Apple Sign-In
+
+#### UserService
+**File**: `services/user.ts`
+
+**Methods**:
+- `getProfile()` - Get user profile
+- `updateProfile(data)` - Update profile
+- `getCompleteData()` - Get complete user data
+- `getDashboardData()` - Get dashboard statistics
+- `getInboxAccounts()` - Get inbox accounts
+- `getFolders()` - Get email folders
+- `createFolder(name)` - Create folder
+- `deleteFolder(name)` - Delete folder
+- `getSubscriptions()` - Get newsletter subscriptions
+- `toggleSubscription(newsletterId)` - Toggle subscription
+
+#### EmailService
+**File**: `services/email.ts`
+
+**Methods**:
+- `getInboxEmails(params)` - Get inbox emails
+- `getFavoriteEmails(params)` - Get favorite emails
+- `getReadLaterEmails(params)` - Get read later emails
+- `getEmail(emailId)` - Get email details
+- `toggleFavorite(emailId)` - Toggle favorite
+- `toggleReadLater(emailId)` - Toggle read later
+- `updateReadStatus(emailId, isRead)` - Mark as read/unread
+- `moveToTrash(emailId)` - Move to trash
+- `restoreEmail(emailId)` - Restore from trash
+- `getEmailContent(emailId)` - Get email content
+- `addHighlight(emailId, data)` - Add highlight
+- `getHighlights(emailId)` - Get highlights
+- `summarizeEmail(emailId)` - Generate summary
+
+#### NewsletterService
+**File**: `services/newsletter.ts`
+
+**Methods**:
+- `getTrending()` - Get trending newsletters
+- `getCategories()` - Get categories
+- `searchNewsletters(params)` - Search newsletters
+- `getNewsletterDetails(id)` - Get newsletter details
+- `getRecommendations(limit)` - Get recommendations
+- `subscribe(newsletterId)` - Subscribe to newsletter
+- `unsubscribe(newsletterId)` - Unsubscribe
+
+#### ReadingService
+**File**: `services/reading.ts`
+
+**Methods**:
+- `getStreakCount()` - Get streak count
+- `getTimeRangeStats(startDate, endDate)` - Get time range stats
+- `getGlobalStats()` - Get global statistics
+- `createReadingLog(data)` - Create reading log
+- `getReadingLogs(params)` - Get reading logs
+- `incrementStreak()` - Increment streak
+
+#### SearchService
+**File**: `services/search.ts`
+
+**Methods**:
+- `unifiedSearch(params)` - Unified search
+- `searchProviders(params)` - Search newsletter providers
+- `searchEmails(params)` - Search emails
+- `searchPosts(params)` - Search newsletter posts
+
+## API Endpoints
+
+### Authentication Endpoints
+
+#### POST `/auth/send-otp/`
+Send OTP to email.
+
+**Request**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response**:
+```json
+{
+  "message": "OTP sent successfully",
+  "expires_in": 600
+}
+```
+
+#### POST `/auth/verify-otp/`
+Verify OTP and get tokens.
+
+**Request**:
+```json
+{
+  "email": "user@example.com",
+  "otp": "1234",
+  "deviceInfo": {
+    "deviceName": "iPhone 14",
+    "userAgent": "Mozilla/5.0...",
+    "ip": "192.168.1.1"
+  }
+}
+```
+
+**Response**:
+```json
+{
+  "user": { ... },
+  "accessToken": "eyJhbGci...",
+  "refreshToken": "eyJhbGci...",
+  "isNewUser": false
+}
+```
+
+#### POST `/auth/refresh/`
+Refresh access token.
+
+**Request**:
+```json
+{
+  "refreshToken": "eyJhbGci..."
+}
+```
+
+**Response**:
+```json
+{
+  "accessToken": "eyJhbGci...",
+  "refreshToken": "eyJhbGci..."
+}
+```
+
+#### POST `/auth/validate-session/`
+Validate user session.
+
+**Request**:
+```json
+{
+  "accessToken": "eyJhbGci...",
+  "refreshToken": "eyJhbGci..."
+}
+```
+
+**Response**:
+```json
+{
+  "isValid": true,
+  "user": { ... }
+}
+```
+
+### User Endpoints
+
+#### GET `/user/profile/`
+Get user profile.
+
+**Response**:
+```json
+{
+  "id": "...",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "username": "johndoe",
+  "isVerified": true,
+  "isInboxCreated": true
+}
+```
+
+#### GET `/user/complete-data/`
+Get complete user data.
+
+**Response**:
+```json
+{
+  "profile": { ... },
+  "emails": { ... },
+  "inboxAccounts": [ ... ],
+  "folders": [ ... ],
+  "subscription": { ... }
+}
+```
+
+#### GET `/user/dashboard-data/`
+Get dashboard statistics.
+
+**Response**:
+```json
+{
+  "total_emails": 100,
+  "unread_emails": 25,
+  "read_emails": 75,
+  "favorite_emails": 10,
+  "read_later_emails": 5
+}
+```
+
+### Email Endpoints
+
+#### GET `/email/inbox/`
+Get inbox emails.
+
+**Query Parameters**:
+- `page` - Page number
+- `page_size` - Results per page
+- `is_read` - Filter by read status
+- `filter` - Filter type (latest/oldest)
+
+**Response**:
+```json
+{
+  "results": [ ... ],
+  "count": 100,
+  "next": "...",
+  "previous": null
+}
+```
+
+#### GET `/email/<id>/`
+Get email details.
+
+**Response**:
+```json
+{
+  "id": "...",
+  "subject": "...",
+  "sender": "...",
+  "content": "...",
+  "is_read": false,
+  "is_favorite": false
+}
+```
+
+#### POST `/email/<id>/favorite/`
+Toggle favorite status.
+
+#### POST `/email/<id>/readlater/`
+Toggle read later status.
+
+#### POST `/email/<id>/trash/`
+Move email to trash.
+
+### Newsletter Endpoints
+
+#### GET `/directory/search/`
+Search newsletters.
+
+**Query Parameters**:
+- `query` - Search query
+- `category` - Filter by category
+- `page` - Page number
+- `limit` - Results per page
+
+#### GET `/directory/<id>/`
+Get newsletter details.
+
+#### GET `/directory/recommendations/`
+Get personalized recommendations.
+
+### Search Endpoints
+
+#### GET `/search/unified/`
+Unified search across all types.
+
+**Query Parameters**:
+- `q` - Search query
+- `types` - Content types
+- `page` - Page number
+- `page_size` - Results per page
+
+## Usage Examples
+
+### Using Services in Components
+
+```typescript
+import { emailService } from '@/services/email';
+import { useState, useEffect } from 'react';
+
+function InboxPage() {
+  const [emails, setEmails] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchEmails() {
+      try {
+        const response = await emailService.getInboxEmails({
+          page: 1,
+          page_size: 20
+        });
+        setEmails(response.results);
+      } catch (error) {
+        console.error('Failed to fetch emails:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEmails();
+  }, []);
+
+  return (
+    <div>
+      {emails.map(email => (
+        <EmailCard key={email.id} email={email} />
+      ))}
+    </div>
+  );
+}
+```
+
+### Using Custom Hooks
+
+```typescript
+import { useEmailList } from '@/hooks/useEmail';
+
+function InboxPage() {
+  const { emails, loading, error, refetch } = useEmailList({
+    page: 1,
+    page_size: 20
+  });
+
+  if (loading) return <Loading />;
+  if (error) return <Error message={error} />;
+
+  return (
+    <div>
+      {emails.map(email => (
+        <EmailCard key={email.id} email={email} />
+      ))}
+    </div>
+  );
+}
+```
+
+## Error Handling
+
+### Error Formatting
+Errors are formatted consistently:
+
+```typescript
+// Django error format
+{
+  "statusCode": 400,
+  "message": "Error message",
+  "error": "BadRequest"
+}
+```
+
+### Error Handling in Services
+
+```typescript
+try {
+  const response = await apiClient.get('/endpoint/');
+  return response.data;
+} catch (error: any) {
+  const errorMessage = error?.response?.data?.message || 'An error occurred';
+  throw new Error(errorMessage);
+}
+```
+
+## Token Management
+
+### Token Storage
+- **Storage**: Cookies (js-cookie)
+- **Access Token**: `access_token` cookie
+- **Refresh Token**: `refresh_token` cookie
+- **Expiration**: 7 days (access), 30 days (refresh)
+
+### Automatic Token Refresh
+- **Trigger**: 401 Unauthorized response
+- **Flow**: Refresh token → Update cookies → Retry request
+- **Fallback**: Redirect to login if refresh fails
+
+## Related Documentation
+
+- [Services](/docs/frontend/services) - Service layer details
+- [Hooks](/docs/frontend/hooks) - Custom hooks
+- [Backend API](/docs/backend/api/overview) - Backend API documentation

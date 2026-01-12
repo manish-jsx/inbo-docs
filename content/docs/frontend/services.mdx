@@ -1,0 +1,505 @@
+---
+title: Services
+description: API service layer documentation
+---
+
+# Services
+
+The service layer provides a clean abstraction over the Django REST API, handling data transformation, error handling, and type safety.
+
+## Service Architecture
+
+### Service Pattern
+
+All services follow a consistent pattern:
+
+```typescript
+class ServiceName {
+  async methodName(params): Promise<ResponseType> {
+    const response = await apiClient.get('/endpoint/', { params });
+    return this.mapResponse(response.data);
+  }
+  
+  private mapResponse(apiData: any): ResponseType {
+    // Transform API response to app types
+    return {
+      // Mapped fields
+    };
+  }
+}
+
+export const serviceName = new ServiceName();
+export default serviceName;
+```
+
+## Auth Service
+
+**File**: `services/auth.ts`
+
+### Purpose
+Handles all authentication operations including login, registration, OAuth, OTP, and magic links.
+
+### Methods
+
+#### `login(credentials: LoginCredentials)`
+Email/password login.
+
+**Parameters**:
+- `email`: string
+- `password`: string
+
+**Returns**: `AuthResponse` with user and tokens
+
+#### `register(data)`
+User registration.
+
+**Parameters**:
+- `email`: string
+- `password`: string
+- `first_name?`: string
+- `last_name?`: string
+- `username?`: string
+
+**Returns**: `AuthResponse`
+
+#### `logout()`
+Logout user and clear tokens.
+
+#### `getCurrentUser()`
+Get current user profile.
+
+**Returns**: `User`
+
+#### `refreshToken()`
+Refresh access token.
+
+**Returns**: New tokens
+
+#### `validateSession()`
+Validate user session.
+
+**Returns**: `{ isValid: boolean, user: User | null }`
+
+#### `requestOTP({ email?, phone? })`
+Request OTP.
+
+**Returns**: `{ message: string, expires_in: number }`
+
+#### `verifyOTP(data: OTPVerify)`
+Verify OTP and get tokens.
+
+**Parameters**:
+- `email`: string
+- `otp`: string
+- `deviceInfo`: Device information
+
+**Returns**: `AuthResponse & { isNewUser?: boolean }`
+
+#### `requestMagicLink({ email, callback_url? })`
+Request magic link.
+
+**Returns**: `{ message: string }`
+
+#### `verifyMagicLink(token: string)`
+Verify magic link token.
+
+**Returns**: `AuthResponse`
+
+#### `googleAuth(data: GoogleAuthRequest)`
+Google OAuth authentication.
+
+**Returns**: `AuthResponse`
+
+#### `appleAuth(data: AppleAuthRequest)`
+Apple Sign-In authentication.
+
+**Returns**: `AuthResponse`
+
+## User Service
+
+**File**: `services/user.ts`
+
+### Purpose
+Manages user profile, dashboard data, folders, and subscriptions.
+
+### Methods
+
+#### `getProfile()`
+Get user profile.
+
+**Returns**: `User`
+
+#### `updateProfile(data: Partial<User>)`
+Update user profile.
+
+**Returns**: Updated `User`
+
+#### `getCompleteData()`
+Get complete user data including profile, emails, folders, subscriptions.
+
+**Returns**: `CompleteUserData`
+
+#### `getDashboardData()`
+Get dashboard statistics.
+
+**Returns**: `DashboardData`
+
+#### `getInboxAccounts()`
+Get all inbox email accounts.
+
+**Returns**: `InboxAccount[]`
+
+#### `getFolders()`
+Get user email folders.
+
+**Returns**: `Folder[]`
+
+#### `createFolder(name: string)`
+Create a new folder.
+
+**Returns**: `Folder`
+
+#### `deleteFolder(name: string)`
+Delete a folder.
+
+#### `getSubscriptions()`
+Get newsletter subscriptions.
+
+**Returns**: `Subscription[]`
+
+#### `toggleSubscription(newsletterId: string)`
+Toggle subscription status.
+
+**Returns**: Updated subscription
+
+## Email Service
+
+**File**: `services/email.ts`
+
+### Purpose
+Handles all email operations including inbox, favorites, read later, and email actions.
+
+### Methods
+
+#### `getInboxEmails(params: EmailListParams)`
+Get inbox emails with pagination and filters.
+
+**Parameters**:
+- `page?`: number
+- `page_size?`: number
+- `is_read?`: boolean
+- `filter?`: 'latest' | 'oldest'
+
+**Returns**: `EmailListResponse`
+
+#### `getFavoriteEmails(params: EmailListParams)`
+Get favorite emails.
+
+**Returns**: `EmailListResponse`
+
+#### `getReadLaterEmails(params: EmailListParams)`
+Get read later emails.
+
+**Returns**: `EmailListResponse`
+
+#### `getEmail(emailId: string)`
+Get email details.
+
+**Returns**: `Email`
+
+#### `getEmailContent(emailId: string)`
+Get full email content.
+
+**Returns**: Email content with HTML
+
+#### `toggleFavorite(emailId: string)`
+Toggle favorite status.
+
+**Returns**: Updated email
+
+#### `toggleReadLater(emailId: string)`
+Toggle read later status.
+
+**Returns**: Updated email
+
+#### `updateReadStatus(emailId: string, isRead: boolean)`
+Mark email as read/unread.
+
+**Returns**: Updated email
+
+#### `moveToTrash(emailId: string)`
+Move email to trash.
+
+#### `restoreEmail(emailId: string)`
+Restore email from trash.
+
+#### `addHighlight(emailId: string, data)`
+Add highlight to email.
+
+**Parameters**:
+- `highlightText`: string
+- `note?`: string
+
+#### `getHighlights(emailId: string)`
+Get email highlights.
+
+**Returns**: `Highlight[]`
+
+#### `summarizeEmail(emailId: string)`
+Generate AI summary for email.
+
+**Returns**: Summary text
+
+### Data Transformation
+
+Email service maps API responses:
+
+```typescript
+private mapEmailResponse(apiEmail: any): Email {
+  return {
+    id: apiEmail.id,
+    subject: apiEmail.subject || '',
+    sender: apiEmail.sender || '',
+    sender_email: apiEmail.senderEmail || apiEmail.sender,
+    content_preview: apiEmail.contentPreview || '',
+    is_read: apiEmail.isRead ?? false,
+    is_favorite: apiEmail.isFavorite ?? false,
+    // ... more mappings
+  };
+}
+```
+
+## Newsletter Service
+
+**File**: `services/newsletter.ts`
+
+### Purpose
+Manages newsletter discovery, subscriptions, and recommendations.
+
+### Methods
+
+#### `getTrending()`
+Get trending newsletters.
+
+**Returns**: `Newsletter[]`
+
+**Fallback Strategy**:
+1. Try `/recommendation/recommendations/`
+2. Fallback to `/directory/recommendations/`
+3. Return empty array if both fail
+
+#### `getCategories()`
+Get all newsletter categories.
+
+**Returns**: `Category[]`
+
+#### `searchNewsletters(params: NewsletterListParams)`
+Search newsletters.
+
+**Parameters**:
+- `query?`: string
+- `category?`: string
+- `tags?`: string[]
+- `page?`: number
+- `page_size?`: number
+
+**Returns**: `NewsletterListResponse`
+
+#### `getNewsletterDetails(id: string)`
+Get newsletter details.
+
+**Returns**: `Newsletter`
+
+#### `getRecommendations(limit?: number)`
+Get personalized recommendations.
+
+**Returns**: `Newsletter[]`
+
+#### `subscribe(newsletterId: string)`
+Subscribe to newsletter.
+
+**Returns**: Subscription
+
+#### `unsubscribe(newsletterId: string)`
+Unsubscribe from newsletter.
+
+## Reading Service
+
+**File**: `services/reading.ts`
+
+### Purpose
+Manages reading statistics, logs, and streaks.
+
+### Methods
+
+#### `getStreakCount()`
+Get current streak count.
+
+**Returns**: `{ streak_count: number, longest_streak: number }`
+
+#### `getTimeRangeStats(startDate: string, endDate: string)`
+Get reading statistics for date range.
+
+**Returns**: `TimeRangeStats`
+
+#### `getGlobalStats()`
+Get global reading statistics.
+
+**Returns**: Reading statistics
+
+#### `createReadingLog(data)`
+Create reading log entry.
+
+**Parameters**:
+- `email_id`: string
+- `time_spent`: number (seconds)
+- `words_read`: number
+- `reading_progress?`: number (0-100)
+
+**Returns**: `ReadingLog`
+
+#### `getReadingLogs(params)`
+Get reading logs with pagination.
+
+**Returns**: Reading logs
+
+#### `incrementStreak()`
+Increment reading streak (idempotent).
+
+**Returns**: Streak information
+
+## Search Service
+
+**File**: `services/search.ts`
+
+### Purpose
+Handles search operations across all content types.
+
+### Methods
+
+#### `unifiedSearch(params: SearchParams)`
+Unified search across all types.
+
+**Parameters**:
+- `q`: string (required)
+- `type?`: 'unified' | 'providers' | 'emails' | 'posts'
+- `page?`: number
+- `page_size?`: number
+- `filters?`: Filter object
+
+**Returns**: `SearchResponse`
+
+#### `searchProviders(params: SearchParams)`
+Search newsletter providers.
+
+**Returns**: `SearchResponse`
+
+#### `searchEmails(params: SearchParams)`
+Search user emails.
+
+**Returns**: `SearchResponse`
+
+#### `searchPosts(params: SearchParams)`
+Search newsletter posts.
+
+**Returns**: `SearchResponse`
+
+## Service Exports
+
+**File**: `services/index.ts`
+
+Centralized service exports:
+
+```typescript
+export { authService, default as auth } from './auth';
+export { userService, default as user } from './user';
+export { emailService, default as email } from './email';
+export { newsletterService, default as newsletter } from './newsletter';
+export { readingService, default as reading } from './reading';
+export { searchService, default as search } from './search';
+```
+
+## Error Handling
+
+### Service Error Handling
+
+All services handle errors consistently:
+
+```typescript
+try {
+  const response = await apiClient.get('/endpoint/');
+  return response.data;
+} catch (error: any) {
+  // Extract error message
+  const errorMessage = error?.response?.data?.message || 
+                       error?.response?.data?.detail || 
+                       'An error occurred';
+  throw new Error(errorMessage);
+}
+```
+
+### Error Types
+
+- **Network Errors**: Connection failures
+- **API Errors**: 4xx, 5xx responses
+- **Validation Errors**: Invalid input
+- **Auth Errors**: Token expiration
+
+## Type Safety
+
+### TypeScript Interfaces
+
+All services use TypeScript interfaces:
+
+```typescript
+export interface Email {
+  id: string;
+  subject: string;
+  sender: string;
+  is_read: boolean;
+  // ... more fields
+}
+
+export interface EmailListResponse {
+  results: Email[];
+  count: number;
+  next: string | null;
+  previous: string | null;
+}
+```
+
+## Usage Examples
+
+### Direct Service Usage
+
+```typescript
+import { emailService } from '@/services/email';
+
+// Get inbox emails
+const response = await emailService.getInboxEmails({
+  page: 1,
+  page_size: 20,
+  is_read: false
+});
+
+console.log(response.results);
+```
+
+### Service with Error Handling
+
+```typescript
+import { userService } from '@/services/user';
+
+try {
+  const profile = await userService.getProfile();
+  console.log(profile);
+} catch (error) {
+  console.error('Failed to get profile:', error.message);
+}
+```
+
+## Related Documentation
+
+- [API Integration](/docs/frontend/api-integration) - API client configuration
+- [Hooks](/docs/frontend/hooks) - Custom hooks using services
+- [Backend API](/docs/backend/api/overview) - Backend API reference

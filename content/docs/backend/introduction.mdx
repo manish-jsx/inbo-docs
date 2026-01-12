@@ -1,0 +1,161 @@
+---
+title: Backend Introduction
+description: Overview of the INBO Backend Django system
+---
+
+# INBO Backend Django - Introduction
+
+## Overview
+
+The INBO Backend is a comprehensive Django 5.0.6 application that powers the INBO platform - an intelligent email and newsletter management system. The backend provides a robust API for managing users, emails, newsletters, subscriptions, search, recommendations, and personalized experiences.
+
+## Technology Stack
+
+### Core Framework
+- **Django 5.0.6** - Web framework
+- **Python 3.12** - Programming language
+- **Django REST Framework 3.15.2** - API framework
+- **PostgreSQL** - Primary database (with SQLite fallback for development)
+
+### Key Dependencies
+- **JWT Authentication** - `djangorestframework-simplejwt` for token-based auth
+- **Celery 5.4.0** - Background task processing
+- **Redis 5.2.0** - Caching and task queue
+- **Elasticsearch/OpenSearch** - Search engine (via Bonsai.io)
+- **Stripe** - Payment processing
+- **Firebase Admin** - Push notifications
+- **Azure Blob Storage** - File storage
+- **OpenAI** - AI-powered features
+
+### Third-Party Integrations
+- **Gmail API** - Email synchronization
+- **Pocket, Notion, Evernote** - Content integrations
+- **Unfold Admin** - Modern Django admin interface
+
+## Architecture Overview
+
+The backend follows a modular architecture with separate Django apps for different functionalities:
+
+### Core Apps
+- **core** - Base models (User, Email, Newsletter, etc.)
+- **auth_app** - Authentication and authorization
+- **user_app** - User management and profiles
+- **email_app** - Email operations
+- **reading_app** - Reading statistics and streaks
+
+### Content & Discovery
+- **directory_app** - Newsletter directory and discovery
+- **newsletter_profile_app** - Newsletter subscriptions and posts
+- **search_app** - Full-text search with Elasticsearch
+- **recommendation_engine** - Personalized recommendations
+- **experience_app** - Experience orchestration and personalization
+
+### Integrations & Services
+- **gmail_app** - Gmail integration
+- **integration_app** - Third-party integrations (Pocket, Notion, Evernote)
+- **subscription_app** - Subscription and payment management
+- **ai_app** - AI-powered features
+- **azure_app** - Azure Blob Storage integration
+- **nodemailer_app** - Email sending service
+- **crypto_app** - Cryptographic operations
+- **tasks_app** - Background task management
+- **webhook_app** - Webhook handlers
+
+### Administrative
+- **waitlist_app** - Waitlist management
+- **account_deletion_app** - GDPR-compliant account deletion
+
+## Key Features
+
+### 1. Authentication & Authorization
+- OTP-based email verification
+- JWT token authentication
+- Device and session tracking
+- Role-based permissions (Guardian)
+
+### 2. Email Management
+- Custom @inbo.me email addresses
+- Email folders (Inbox, Archive, Favorites)
+- Email search and filtering
+- AI-powered email summaries
+- Email highlights and annotations
+
+### 3. Newsletter Management
+- Newsletter directory with rich metadata
+- Newsletter subscriptions
+- Newsletter post tracking
+- Reading progress and statistics
+
+### 4. Search & Discovery
+- Full-text search across emails, newsletters, and posts
+- Global newsletter provider search
+- User-scoped content search
+- Redis-cached search results
+
+### 5. Personalization
+- Recommendation engine with collaborative filtering
+- Experience orchestration for personalized UI
+- User behavior tracking
+- Fatigue and diversity control
+
+### 6. Reading Analytics
+- Daily reading statistics
+- Reading streaks
+- Time spent tracking
+- Word count and reading progress
+
+### 7. Subscriptions & Payments
+- Stripe integration
+- Subscription plans and management
+- Payment transaction tracking
+- Webhook handling
+
+## Project Structure
+
+```
+inbo-backend-django/
+├── core/                    # Core models and utilities
+├── auth_app/               # Authentication
+├── user_app/                # User management
+├── email_app/               # Email operations
+├── reading_app/             # Reading statistics
+├── directory_app/           # Newsletter directory
+├── newsletter_profile_app/  # Newsletter subscriptions
+├── search_app/              # Search functionality
+├── recommendation_engine/   # Recommendations
+├── experience_app/           # Experience orchestration
+├── subscription_app/        # Subscriptions
+├── gmail_app/               # Gmail integration
+├── integration_app/         # Third-party integrations
+├── ai_app/                  # AI features
+├── azure_app/               # Azure storage
+├── tasks_app/               # Background tasks
+├── webhook_app/              # Webhooks
+├── waitlist_app/            # Waitlist
+├── account_deletion_app/     # Account deletion
+├── inbo_backend/            # Django project settings
+├── manage.py                # Django management script
+└── requirements.txt        # Python dependencies
+```
+
+## API Documentation
+
+The backend provides comprehensive API documentation:
+
+- **Swagger UI**: `/api/docs/`
+- **ReDoc**: `/api/redoc/`
+- **OpenAPI Schema**: `/api/schema/`
+
+All API endpoints are documented using `drf-spectacular` and follow OpenAPI 3.0 specification.
+
+## Development Setup
+
+See the [Installation Guide](/docs/backend/installation) for detailed setup instructions.
+
+## Next Steps
+
+- [System Architecture](/docs/backend/architecture/overview) - Deep dive into system architecture
+- [Apps Documentation](/docs/backend/apps/overview) - Detailed app documentation
+- [API Reference](/docs/backend/api/overview) - Complete API documentation
+- [Services Documentation](/docs/backend/services/overview) - Service layer documentation
+- [Deployment Guide](/docs/backend/deployment/overview) - Deployment instructions

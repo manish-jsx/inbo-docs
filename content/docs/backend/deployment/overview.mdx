@@ -1,0 +1,424 @@
+---
+title: Deployment Overview
+description: Deployment guide for the INBO Backend
+---
+
+# Deployment Overview
+
+The INBO Backend is deployed on Azure App Service with PostgreSQL database, Redis cache, and Elasticsearch (Bonsai.io) for search.
+
+## Deployment Architecture
+
+```
+Azure App Service (Django API)
+├── PostgreSQL Database (Azure Database for PostgreSQL)
+├── Redis Cache (Azure Cache for Redis)
+├── Azure Blob Storage (File Storage)
+└── Celery Workers (Background Processing)
+```
+
+## Prerequisites
+
+- Azure account with appropriate permissions
+- Azure CLI installed
+- Docker (for containerized deployment)
+- Environment variables configured
+
+## Environment Variables
+
+### Required Variables
+
+```bash
+# Django
+SECRET_KEY=your-secret-key
+DEBUG=False
+ALLOWED_HOSTS=inbo-django-api.azurewebsites.net,api.inbo.club
+
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/db
+DIRECT_URL=postgresql://user:pass@host:5432/db
+
+# Redis
+REDIS_URL=redis://host:6379/0
+CELERY_BROKER_URL=redis://host:6379/0
+CELERY_RESULT_BACKEND=redis://host:6379/0
+
+# Elasticsearch
+BONSAI_URL=https://user:pass@cluster.bonsaisearch.net
+
+# Azure Storage
+AZURE_STORAGE_CONNECTION_STRING=your-connection-string
+AZURE_STORAGE_CONTAINER_NAME=emails
+
+# JWT
+JWT_SECRET=your-jwt-secret
+OTP_SECRET=your-otp-secret
+
+# Email
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+DEFAULT_FROM_EMAIL=noreply@inbo.me
+
+# Stripe
+STRIPE_SECRET_KEY=your-stripe-secret
+STRIPE_WEBHOOK_SECRET=your-webhook-secret
+
+# OpenAI
+OPENAI_API_KEY=your-openai-key
+
+# Firebase
+FIREBASE_CREDENTIALS_PATH=/path/to/firebase-credentials.json
+```
+
+## Deployment Steps
+
+### 1. Database Setup
+
+```bash
+# Create PostgreSQL database
+az postgres flexible-server create \
+  --resource-group inbo-rg \
+  --name inbo-postgres \
+  --admin-user adminuser \
+  --admin-password <password> \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --version 14
+
+# Configure firewall
+az postgres flexible-server firewall-rule create \
+  --resource-group inbo-rg \
+  --name inbo-postgres \
+  --rule-name AllowAzureServices \
+  --start-ip-address 0.0.0.0 \
+  --end-ip-address 0.0.0.0
+```
+
+### 2. Redis Setup
+
+```bash
+# Create Redis cache
+az redis create \
+  --resource-group inbo-rg \
+  --name inbo-redis \
+  --location eastus \
+  --sku Basic \
+  --vm-size c0
+```
+
+### 3. Azure Blob Storage
+
+```bash
+# Create storage account
+az storage account create \
+  --resource-group inbo-rg \
+  --name inbostorage \
+  --location eastus \
+  --sku Standard_LRS
+
+# Create container
+az storage container create \
+  --account-name inbostorage \
+  --name emails
+```
+
+### 4. App Service Setup
+
+```bash
+# Create App Service plan
+az appservice plan create \
+  --resource-group inbo-rg \
+  --name inbo-plan \
+  --sku B1 \
+  --is-linux
+
+# Create Web App
+az webapp create \
+  --resource-group inbo-rg \
+  --plan inbo-plan \
+  --name inbo-django-api \
+  --runtime "PYTHON:3.12"
+```
+
+### 5. Configure Environment Variables
+
+```bash
+# Set environment variables
+az webapp config appsettings set \
+  --resource-group inbo-rg \
+  --name inbo-django-api \
+  --settings \
+    SECRET_KEY="..." \
+    DATABASE_URL="..." \
+    REDIS_URL="..." \
+    BONSAI_URL="..."
+```
+
+### 6. Deploy Application
+
+```bash
+# Deploy from Git
+az webapp deployment source config \
+  --resource-group inbo-rg \
+  --name inbo-django-api \
+  --repo-url https://github.com/your-repo/inbo-backend-django \
+  --branch main \
+  --manual-integration
+
+# Or deploy from local
+az webapp up \
+  --resource-group inbo-rg \
+  --name inbo-django-api \
+  --runtime "PYTHON:3.12"
+```
+
+### 7. Run Migrations
+
+```bash
+# SSH into App Service
+az webapp ssh \
+  --resource-group inbo-rg \
+  --name inbo-django-api
+
+# Run migrations
+python manage.py migrate
+
+# Create superuser
+python manage.py createsuperuser
+```
+
+### 8. Setup Celery Workers
+
+```bash
+# Create separate App Service for Celery
+az webapp create \
+  --resource-group inbo-rg \
+  --plan inbo-plan \
+  --name inbo-celery-worker \
+  --runtime "PYTHON:3.12"
+
+# Configure startup command
+az webapp config set \
+  --resource-group inbo-rg \
+  --name inbo-celery-worker \
+  --startup-file "celery -A inbo_backend worker -l info"
+```
+
+### 9. Setup Celery Beat
+
+```bash
+# Create App Service for Celery Beat
+az webapp create \
+  --resource-group inbo-rg \
+  --plan inbo-plan \
+  --name inbo-celery-beat \
+  --runtime "PYTHON:3.12"
+
+# Configure startup command
+az webapp config set \
+  --resource-group inbo-rg \
+  --name inbo-celery-beat \
+  --startup-file "celery -A inbo_backend beat -l info"
+```
+
+## Docker Deployment
+
+### Dockerfile
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "inbo_backend.wsgi:application"]
+```
+
+### Deploy with Docker
+
+```bash
+# Build image
+docker build -t inbo-backend .
+
+# Push to Azure Container Registry
+az acr create --resource-group inbo-rg --name inboregistry --sku Basic
+az acr login --name inboregistry
+docker tag inbo-backend inboregistry.azurecr.io/inbo-backend:latest
+docker push inboregistry.azurecr.io/inbo-backend:latest
+
+# Deploy from ACR
+az webapp config container set \
+  --resource-group inbo-rg \
+  --name inbo-django-api \
+  --docker-custom-image-name inboregistry.azurecr.io/inbo-backend:latest \
+  --docker-registry-server-url https://inboregistry.azurecr.io
+```
+
+## Health Checks
+
+The application provides health check endpoints:
+
+- `/health` - Basic health check
+- `/api/health/` - Detailed health check
+
+Configure Azure health checks:
+
+```bash
+az webapp config set \
+  --resource-group inbo-rg \
+  --name inbo-django-api \
+  --generic-configurations '{"healthCheckPath": "/health"}'
+```
+
+## Monitoring
+
+### Application Insights
+
+```bash
+# Create Application Insights
+az monitor app-insights component create \
+  --resource-group inbo-rg \
+  --app inbo-insights \
+  --location eastus \
+  --application-type web
+
+# Get instrumentation key
+az monitor app-insights component show \
+  --resource-group inbo-rg \
+  --app inbo-insights \
+  --query instrumentationKey
+
+# Configure in App Service
+az webapp config appsettings set \
+  --resource-group inbo-rg \
+  --name inbo-django-api \
+  --settings APPINSIGHTS_INSTRUMENTATIONKEY="<key>"
+```
+
+### Logging
+
+```bash
+# Enable logging
+az webapp log config \
+  --resource-group inbo-rg \
+  --name inbo-django-api \
+  --application-logging filesystem \
+  --level information
+
+# Stream logs
+az webapp log tail \
+  --resource-group inbo-rg \
+  --name inbo-django-api
+```
+
+## Scaling
+
+### Scale Up
+
+```bash
+# Change App Service plan SKU
+az appservice plan update \
+  --resource-group inbo-rg \
+  --name inbo-plan \
+  --sku P1V2
+```
+
+### Scale Out
+
+```bash
+# Scale to multiple instances
+az appservice plan update \
+  --resource-group inbo-rg \
+  --name inbo-plan \
+  --number-of-workers 3
+```
+
+## Backup & Recovery
+
+### Database Backup
+
+```bash
+# Enable automated backups
+az postgres flexible-server backup create \
+  --resource-group inbo-rg \
+  --server-name inbo-postgres \
+  --backup-name daily-backup
+```
+
+### Application Backup
+
+```bash
+# Backup App Service
+az webapp deployment slot list \
+  --resource-group inbo-rg \
+  --name inbo-django-api
+```
+
+## Security
+
+### SSL/TLS
+
+```bash
+# Configure custom domain with SSL
+az webapp config hostname add \
+  --resource-group inbo-rg \
+  --webapp-name inbo-django-api \
+  --hostname api.inbo.club
+
+# Add SSL certificate
+az webapp config ssl bind \
+  --resource-group inbo-rg \
+  --name inbo-django-api \
+  --certificate-thumbprint <thumbprint> \
+  --ssl-type SNI
+```
+
+### Firewall Rules
+
+```bash
+# Restrict database access
+az postgres flexible-server firewall-rule create \
+  --resource-group inbo-rg \
+  --name inbo-postgres \
+  --rule-name AllowAppService \
+  --start-ip-address <app-service-ip> \
+  --end-ip-address <app-service-ip>
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Database Connection Errors**
+   - Check firewall rules
+   - Verify connection string
+   - Check SSL requirements
+
+2. **Redis Connection Errors**
+   - Verify Redis URL
+   - Check firewall rules
+   - Verify authentication
+
+3. **Migration Errors**
+   - Check database permissions
+   - Verify migration files
+   - Check for conflicting migrations
+
+4. **Celery Worker Issues**
+   - Check Redis connection
+   - Verify task registration
+   - Check worker logs
+
+## Next Steps
+
+- [Azure Configuration](/docs/backend/deployment/azure) - Detailed Azure setup
+- [Database Setup](/docs/backend/deployment/database) - Database configuration
+- [Monitoring Setup](/docs/backend/deployment/monitoring) - Monitoring configuration

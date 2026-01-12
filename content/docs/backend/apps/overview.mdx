@@ -1,0 +1,391 @@
+---
+title: Apps Overview
+description: Overview of all Django apps in the INBO Backend
+---
+
+# Django Apps Overview
+
+The INBO Backend is organized into multiple Django apps, each handling a specific domain of functionality. This document provides an overview of all apps and their responsibilities.
+
+## Core Apps
+
+### [core](/docs/backend/apps/core-app)
+**Purpose**: Base models and shared utilities
+
+**Key Models**:
+- `User` - Main user model (extends AbstractBaseUser)
+- `Email` - Email messages
+- `Newsletter` - Newsletter subscriptions
+- `Folder` - Email folders
+- `InboxEmail` - @inbo.me email addresses
+- `ReadingStats` - Daily reading statistics
+- `UserDevice` - Device tracking
+- `UserSession` - Session management
+
+**Key Features**:
+- Custom user model with email as username
+- Email management
+- Newsletter subscriptions
+- Reading statistics
+- Device and session tracking
+
+### [auth_app](/docs/backend/apps/auth-app)
+**Purpose**: Authentication and authorization
+
+**Key Features**:
+- OTP-based email verification
+- JWT token generation and validation
+- Device registration
+- Session management
+- Password reset (legacy support)
+
+**Endpoints**:
+- `/api/auth/otp/send/` - Send OTP
+- `/api/auth/otp/verify/` - Verify OTP
+- `/api/auth/token/` - Get JWT tokens
+- `/api/auth/token/refresh/` - Refresh access token
+
+**📖 [Full Documentation →](/docs/backend/apps/auth-app)**
+
+### [user_app](/docs/backend/apps/user-app)
+**Purpose**: User management and profiles
+
+**Key Services**:
+- `UserService` - User operations
+- Profile management
+- Inbox creation
+- Dashboard data
+- Folder management
+- Analytics and insights
+
+**Endpoints**:
+- `/api/user/profile/` - Get/update profile
+- `/api/user/complete-data/` - Get complete user data
+- `/api/user/create-inbox/` - Create @inbo.me inbox
+- `/api/user/dashboard-data/` - Get dashboard data
+- `/api/user/folders/` - Manage folders
+
+**📖 [Full Documentation →](/docs/backend/apps/user-app)**
+
+### [email_app](/docs/backend/apps/email-app)
+**Purpose**: Email operations
+
+**Key Services**:
+- `EmailService` - Email CRUD operations
+- Email search and filtering
+- Highlight management
+- Email sharing
+- AI summarization
+
+**Endpoints**:
+- `/api/email/inbox/` - Get inbox emails
+- `/api/email/<id>/` - Get email details
+- `/api/email/<id>/favorite/` - Toggle favorite
+- `/api/email/<id>/highlight/` - Manage highlights
+- `/api/email/search/emails/` - Search emails
+
+**📖 [Full Documentation →](/docs/backend/apps/email-app)**
+
+### [reading_app](/docs/backend/apps/reading-app)
+**Purpose**: Reading statistics and streaks
+
+**Key Services**:
+- `ReadingService` - Reading statistics
+- `StreakService` - Streak management
+- Daily reading tracking
+- Time spent tracking
+- Word count tracking
+
+**Endpoints**:
+- `/api/reading/logs/` - Create/get reading logs
+- `/api/reading/statistics/` - Get reading statistics
+- `/api/reading/streak/` - Get/increment streak
+
+**📖 [Full Documentation →](/docs/backend/apps/reading-app)**
+
+## Content & Discovery Apps
+
+### [directory_app](/docs/backend/apps/directory-app)
+**Purpose**: Newsletter directory and discovery
+
+**Key Models**:
+- `NewsletterProvider` - Newsletter providers
+- `NewsletterCategory` - Categories
+- `NewsletterTag` - Tags
+- Various metadata models (Tones, Audience Levels, etc.)
+
+**Key Services**:
+- `DirectoryService` - Directory operations
+- Newsletter search
+- Category browsing
+- Provider details
+
+**Endpoints**:
+- `/api/directory/providers/` - List/search providers
+- `/api/directory/categories/` - List categories
+- `/api/directory/providers/<id>/` - Provider details
+
+### newsletter_profile_app
+**Purpose**: Newsletter subscriptions and posts
+
+**Key Models**:
+- `NewsletterProfile` - User newsletter profile
+- `NewsletterPreference` - User preferences for newsletters
+- `NewsletterPost` - Individual newsletter posts
+
+**Key Services**:
+- `NewsletterProfileService` - Profile management
+- `NewsletterPreferenceService` - Preference management
+- `NewsletterPostService` - Post management
+- `NewsletterFetcherService` - Post fetching
+
+**Endpoints**:
+- `/api/newsletter-profile/profile/` - Get/update profile
+- `/api/newsletter-profile/preferences/` - Manage preferences
+- `/api/newsletter-profile/posts/` - Get posts
+
+### [search_app](/docs/backend/apps/search-app)
+**Purpose**: Full-text search functionality
+
+**Key Features**:
+- Elasticsearch/OpenSearch integration
+- Multi-index search
+- Redis caching
+- Global and user-scoped search
+
+**Key Services**:
+- Search across emails, newsletters, posts, providers
+- Cached search results
+- Auto-indexing via signals
+
+**Endpoints**:
+- `/api/search/unified/` - Unified search
+- `/api/search/providers/` - Provider search
+- `/api/search/emails/` - Email search
+- `/api/search/posts/` - Post search
+
+### [recommendation_engine](/docs/backend/apps/recommendation-engine)
+**Purpose**: Personalized recommendations
+
+**Key Models**:
+- `UserEvent` - User interaction events
+- `UserFeature` - User features
+- `ItemFeature` - Item features
+- `Recommendation` - Precomputed recommendations
+
+**Key Services**:
+- `EventIngestionService` - Event tracking
+- `FeatureStoreService` - Feature management
+- `CandidateGeneratorService` - Recommendation generation
+
+**Endpoints**:
+- `/api/recommendation/events/` - Track events
+- `/api/recommendation/recommendations/` - Get recommendations
+
+### [experience_app](/docs/backend/apps/experience-app)
+**Purpose**: Experience orchestration and personalization
+
+**Key Models**:
+- `ExperienceRender` - Experience rendering tracking
+- `ExperienceInteraction` - User interactions
+- `ExperienceSectionMetrics` - Section performance metrics
+
+**Key Services**:
+- Experience orchestration
+- Section scoring
+- Fatigue and diversity control
+- Redis state management
+
+**Endpoints**:
+- `/api/experience/page/<page>/` - Get personalized experience
+- `/api/experience/interactions/` - Track interactions
+
+## Integration Apps
+
+### [gmail_app](/docs/backend/apps/gmail-app)
+**Purpose**: Gmail integration
+
+**Key Models**:
+- `GmailAccount` - Gmail account connections
+- `AllowedSender` - Allowed senders
+- `SyncControl` - Sync controls
+
+**Key Services**:
+- `GmailService` - Gmail operations
+- OAuth flow
+- Email synchronization
+- Import emails
+
+**Endpoints**:
+- `/api/gmail/connect/` - Connect Gmail account
+- `/api/gmail/sync/` - Sync emails
+- `/api/gmail/callback/` - OAuth callback
+
+### [integration_app](/docs/backend/apps/integration-app)
+**Purpose**: Third-party integrations
+
+**Key Models**:
+- `Integration` - Integration connections
+- `AuthState` - OAuth states
+
+**Key Services**:
+- `IntegrationService` - Integration management
+- Pocket integration
+- Notion integration
+- Evernote integration
+
+**Endpoints**:
+- `/api/integration/` - List integrations
+- `/api/integration/<provider>/connect/` - Connect integration
+- `/api/integration/<provider>/sync/` - Sync content
+
+### [subscription_app](/docs/backend/apps/subscription-app)
+**Purpose**: Subscription and payment management
+
+**Key Models**:
+- `SubscriptionPlan` - Subscription plans
+- `Subscription` - User subscriptions
+- `PaymentTransaction` - Payment transactions
+- `SubscriptionEvent` - Subscription events
+
+**Key Services**:
+- `SubscriptionService` - Subscription management
+- Stripe integration
+- Payment processing
+- Webhook handling
+
+**Endpoints**:
+- `/api/subscription/plans/` - List plans
+- `/api/subscription/subscriptions/` - Manage subscriptions
+- `/api/subscription/payments/` - Payment operations
+
+## Service Apps
+
+### ai_app
+**Purpose**: AI-powered features
+
+**Key Services**:
+- `AIService` - AI operations
+- Email summarization
+- Content generation
+- OpenAI integration
+
+**Endpoints**:
+- `/api/ai/summarize/` - Summarize content
+- `/api/ai/generate/` - Generate content
+
+### azure_app
+**Purpose**: Azure Blob Storage integration
+
+**Key Services**:
+- `AzureBlobService` - Blob storage operations
+- File upload/download
+- Attachment management
+
+### nodemailer_app
+**Purpose**: Email sending service
+
+**Key Services**:
+- `NodemailerService` - Email sending
+- Transactional emails
+- Notification emails
+
+### crypto_app
+**Purpose**: Cryptographic operations
+
+**Key Services**:
+- `CryptoService` - Encryption/decryption
+- Secure data handling
+
+### tasks_app
+**Purpose**: Background task management
+
+**Key Features**:
+- Celery task definitions
+- Scheduled tasks
+- Task monitoring
+
+## Administrative Apps
+
+### waitlist_app
+**Purpose**: Waitlist management
+
+**Key Models**:
+- `Waitlist` - Waitlist entries
+
+**Key Services**:
+- `WaitlistService` - Waitlist operations
+
+**Endpoints**:
+- `/api/waitlist/` - Join waitlist
+- `/api/waitlist/status/` - Check status
+
+### account_deletion_app
+**Purpose**: GDPR-compliant account deletion
+
+**Key Models**:
+- `AccountDeletionRequest` - Deletion requests
+
+**Key Services**:
+- `AccountDeletionService` - Deletion operations
+- Data anonymization
+- Compliance tracking
+
+**Endpoints**:
+- `/api/account-deletion/request/` - Request deletion
+- `/api/account-deletion/status/` - Check status
+
+### webhook_app
+**Purpose**: Webhook handlers
+
+**Key Services**:
+- `WebhookService` - Webhook processing
+- Stripe webhooks
+- Other webhook handlers
+
+**Endpoints**:
+- `/api/webhook/stripe/` - Stripe webhooks
+- `/api/webhook/<provider>/` - Other webhooks
+
+## App Dependencies
+
+```
+core (base)
+├── auth_app (depends on core)
+├── user_app (depends on core, auth_app)
+├── email_app (depends on core, user_app)
+├── reading_app (depends on core, user_app)
+├── directory_app (standalone)
+├── newsletter_profile_app (depends on core, directory_app)
+├── search_app (depends on core, directory_app, newsletter_profile_app)
+├── recommendation_engine (depends on core, directory_app, newsletter_profile_app)
+├── experience_app (depends on recommendation_engine, search_app)
+├── subscription_app (depends on core)
+├── gmail_app (depends on core, email_app)
+├── integration_app (depends on core)
+├── ai_app (depends on core, email_app)
+├── azure_app (standalone utility)
+├── nodemailer_app (standalone utility)
+├── crypto_app (standalone utility)
+├── tasks_app (depends on all apps)
+├── webhook_app (depends on subscription_app)
+├── waitlist_app (standalone)
+└── account_deletion_app (depends on core, all apps)
+```
+
+## Next Steps
+
+- [Core App](/docs/backend/apps/core-app) - Base models and shared utilities
+- [Auth App](/docs/backend/apps/auth-app) - Authentication and authorization
+- [User App](/docs/backend/apps/user-app) - User management and profiles
+- [Email App](/docs/backend/apps/email-app) - Email operations
+- [Reading App](/docs/backend/apps/reading-app) - Reading statistics and streaks
+- [Search App](/docs/backend/apps/search-app) - Search engine with Bonsai.io
+- [Recommendation Engine](/docs/backend/apps/recommendation-engine) - Personalized recommendations
+- [Experience App](/docs/backend/apps/experience-app) - Experience orchestration
+- [Directory App](/docs/backend/apps/directory-app) - Newsletter directory
+- [Subscription App](/docs/backend/apps/subscription-app) - Stripe subscriptions
+- [Gmail App](/docs/backend/apps/gmail-app) - Gmail integration
+- [Integration App](/docs/backend/apps/integration-app) - Third-party integrations
+- [AI App](/docs/backend/apps/ai-app) - AI-powered features
+- [Supporting Apps](/docs/backend/apps/supporting-apps) - Utility and administrative apps

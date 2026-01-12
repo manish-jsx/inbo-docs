@@ -1,0 +1,552 @@
+---
+title: Components
+description: React component library and organization
+---
+
+# Components
+
+The INBO Frontend uses a well-organized component structure with reusable, type-safe React components.
+
+## Component Organization
+
+### Directory Structure
+
+```
+components/
+├── auth/              # Authentication components
+├── layout/            # Layout components
+├── inbox/             # Inbox/Email components
+├── discover/          # Discovery components
+├── profile/           # Profile components
+├── analytics/         # Analytics components
+├── reading/           # Reading components
+├── seo/               # SEO components
+└── [shared]/          # Shared components
+```
+
+## Layout Components
+
+### Navbar
+**File**: `components/layout/Navbar.tsx`
+
+Desktop navigation bar with:
+- Logo and branding
+- User menu
+- Navigation links
+- Theme toggle
+
+### Sidebar
+**File**: `components/layout/Sidebar.tsx`
+
+Desktop sidebar navigation with:
+- Dashboard links
+- User profile section
+- Navigation menu
+- Mobile drawer support
+
+### BottomNav
+**File**: `components/layout/BottomNav.tsx`
+
+Mobile bottom navigation with:
+- Home icon
+- Inbox icon
+- Discover icon
+- Analytics icon
+- Profile icon
+
+### MobileHeader
+**File**: `components/layout/MobileHeader.tsx`
+
+Mobile header with:
+- Menu toggle
+- Page title
+- User actions
+
+### Footer
+**File**: `components/layout/Footer.tsx`
+
+Page footer with:
+- Links
+- Copyright
+- Social links
+
+## Authentication Components
+
+### OTPAuth
+**File**: `components/auth/OTPAuth.tsx`
+
+OTP authentication component:
+- Email input
+- OTP input
+- Verification flow
+- Error handling
+
+### MagicLinkAuth
+**File**: `components/auth/MagicLinkAuth.tsx`
+
+Magic link authentication:
+- Email input
+- Magic link request
+- Verification
+
+### GoogleAuth
+**File**: `components/auth/GoogleAuth.tsx`
+
+Google OAuth integration:
+- Google Sign-In button
+- OAuth flow
+- Token handling
+
+### AppleAuth
+**File**: `components/auth/AppleAuth.tsx`
+
+Apple Sign-In integration:
+- Apple Sign-In button
+- OAuth flow
+- Token handling
+
+### ProtectedRoute
+**File**: `components/auth/ProtectedRoute.tsx`
+
+Route protection component:
+- Authentication check
+- Redirect to login
+- Loading states
+
+### Registration Components
+**Directory**: `components/auth/register/`
+
+Multi-step registration:
+- `EmailStep.tsx` - Email verification
+- `VerifyCode.tsx` - OTP verification
+- `UsernameStep.tsx` - Username selection
+- `CategoriesStep.tsx` - Category selection
+- `ReminderStep.tsx` - Reminder settings
+- `NotifyStep.tsx` - Notification preferences
+- `WhereHeardStep.tsx` - Onboarding question
+- `IntroStep.tsx` - Welcome step
+
+## Inbox Components
+
+### InboxCard
+**File**: `components/inbox/InboxCard.tsx`
+
+Email card component:
+- Email preview
+- Sender information
+- Subject and preview
+- Action buttons
+- Read/unread state
+
+### TabSwitcher
+**File**: `components/inbox/TabSwitcher.tsx`
+
+Tab switcher for:
+- All emails
+- Unread emails
+- Favorites
+- Read later
+
+### RefreshButton
+**File**: `components/inbox/RefreshButton.tsx`
+
+Refresh button:
+- Pull to refresh
+- Loading state
+- Error handling
+
+### EmptyInbox
+**File**: `components/inbox/EmptyInbox.tsx`
+
+Empty state for inbox:
+- Empty state message
+- Call-to-action
+
+### EmptyList
+**File**: `components/inbox/EmptyList.tsx`
+
+Empty state for filtered lists
+
+### CountBubble
+**File**: `components/inbox/CountBubble.tsx`
+
+Badge component for counts:
+- Unread count
+- Notification badges
+
+## Discovery Components
+
+### NewsletterCarousel
+**File**: `components/discover/NewsletterCarousel.tsx`
+
+Carousel for newsletters:
+- Horizontal scrolling
+- Newsletter cards
+- Navigation arrows
+
+### NewsletterCarouselItem
+**File**: `components/discover/NewsletterCarouselItem.tsx`
+
+Individual newsletter card:
+- Newsletter image
+- Title and description
+- Subscribe button
+- Metadata
+
+### PublicationList
+**File**: `components/discover/PublicationList.tsx`
+
+List of publications:
+- Grid/List layout
+- Filtering
+- Pagination
+
+### PublicationItem
+**File**: `components/discover/PublicationItem.tsx`
+
+Publication card:
+- Publication details
+- Actions
+- Metadata
+
+### PublicationModal
+**File**: `components/discover/PublicationModal.tsx`
+
+Modal for publication details:
+- Full details
+- Subscribe action
+- Related content
+
+### PublisherListItem
+**File**: `components/discover/PublisherListItem.tsx`
+
+Publisher list item:
+- Publisher info
+- Newsletter count
+- Actions
+
+### PersonalizeDiscover
+**File**: `components/discover/PersonalizeDiscover.tsx`
+
+Personalization component:
+- Category selection
+- Preference settings
+
+### InterestedIn
+**File**: `components/discover/InterestedIn.tsx`
+
+Interest selection component:
+- Category tags
+- Selection UI
+
+## Profile Components
+
+### Header
+**File**: `components/profile/Header.tsx`
+
+Profile header:
+- User avatar
+- User name
+- Edit button
+
+### AccountPage
+**File**: `components/profile/AccountPage.tsx`
+
+Account settings page:
+- Profile information
+- Email settings
+- Account actions
+
+### EditProfileModal
+**File**: `components/profile/EditProfileModal.tsx`
+
+Profile editing modal:
+- Form fields
+- Validation
+- Save action
+
+### PrivacySecurityPage
+**File**: `components/profile/PrivacySecurityPage.tsx`
+
+Privacy and security settings:
+- Privacy options
+- Security settings
+- Data management
+
+### HelpCenterPage
+**File**: `components/profile/HelpCenterPage.tsx`
+
+Help center:
+- FAQ
+- Support links
+- Documentation
+
+### FeedbackPage
+**File**: `components/profile/FeedbackPage.tsx`
+
+Feedback form:
+- Feedback type
+- Message input
+- Submit action
+
+### BugReportPage
+**File**: `components/profile/BugReportPage.tsx`
+
+Bug report form:
+- Bug description
+- Steps to reproduce
+- Submit action
+
+### ContactSupportPage
+**File**: `components/profile/ContactSupportPage.tsx`
+
+Contact support:
+- Contact form
+- Support channels
+- Response time
+
+### DeactivatePage
+**File**: `components/profile/DeactivatePage.tsx`
+
+Account deactivation:
+- Deactivation form
+- Confirmation
+- Data retention info
+
+### AboutPage
+**File**: `components/profile/AboutPage.tsx`
+
+About page:
+- App information
+- Version
+- Links
+
+## Analytics Components
+
+### DailyStreakCard
+**File**: `components/analytics/DailyStreakCard.tsx`
+
+Daily streak display:
+- Streak count
+- Visual indicator
+- Streak history
+
+### StreakBottomSheet
+**File**: `components/analytics/StreakBottomSheet.tsx`
+
+Streak details bottom sheet:
+- Streak information
+- History
+- Achievements
+
+### AchievementsCard
+**File**: `components/analytics/AchievementsCard.tsx`
+
+Achievements display:
+- Achievement badges
+- Progress indicators
+
+### AchievementsBottomSheet
+**File**: `components/analytics/AchievementsBottomSheet.tsx`
+
+Achievements details:
+- All achievements
+- Progress tracking
+
+### ReadingInsightsCard
+**File**: `components/analytics/ReadingInsightsCard.tsx`
+
+Reading insights:
+- Statistics
+- Charts
+- Trends
+
+### MoreLikeYouRead
+**File**: `components/analytics/MoreLikeYouRead.tsx`
+
+Recommendations based on reading:
+- Similar content
+- Personalized suggestions
+
+## Reading Components
+
+### MobileReadingHeader
+**File**: `components/reading/MobileReadingHeader.tsx`
+
+Reading page header:
+- Back button
+- Title
+- Actions
+
+### MobileReadingMenu
+**File**: `components/reading/MobileReadingMenu.tsx`
+
+Reading menu:
+- Settings
+- Actions
+- Options
+
+### ReadModeSettings
+**File**: `components/reading/ReadModeSettings.tsx`
+
+Reading mode settings:
+- Font size
+- Theme
+- Line spacing
+
+### MobileFloatingNavbar
+**File**: `components/reading/MobileFloatingNavbar.tsx`
+
+Floating navigation:
+- Previous/Next
+- Actions
+- Progress
+
+## Shared Components
+
+### EmailBubble
+**File**: `components/EmailBubble.tsx`
+
+Email bubble component:
+- Email preview
+- Actions
+- Status indicators
+
+### SearchBar
+**File**: `components/SearchBar.tsx`
+
+Search bar component:
+- Search input
+- Suggestions
+- Results display
+
+### SearchNotFound
+**File**: `components/SearchNotFound.tsx`
+
+Search empty state:
+- No results message
+- Suggestions
+
+### SubscribeButton
+**File**: `components/SubscribeButton.tsx`
+
+Subscribe button:
+- Subscribe/Unsubscribe
+- Loading state
+- Success feedback
+
+### ThemeToggle
+**File**: `components/ThemeToggle.tsx`
+
+Theme toggle:
+- Light/Dark mode
+- Theme switching
+
+### TTSPlayerModal
+**File**: `components/TTSPlayerModal.tsx`
+
+Text-to-speech player:
+- Play/Pause
+- Speed control
+- Progress
+
+### HelpWidget
+**File**: `components/HelpWidget.tsx`
+
+Help widget:
+- Floating help button
+- Help content
+- Support links
+
+### LogoSection
+**File**: `components/LogoSection.tsx`
+
+Logo component:
+- Brand logo
+- App name
+
+### UserSection
+**File**: `components/UserSection.tsx`
+
+User section:
+- User avatar
+- User info
+- Menu
+
+### FilterButton
+**File**: `components/FilterButton.tsx`
+
+Filter button:
+- Filter options
+- Active state
+- Dropdown
+
+### FlameBadge
+**File**: `components/FlameBadge.tsx`
+
+Streak badge:
+- Flame icon
+- Streak count
+- Animation
+
+## SEO Components
+
+### SEOHead
+**File**: `components/seo/SEOHead.tsx`
+
+SEO head component:
+- Meta tags
+- Open Graph
+- Twitter Cards
+
+**Usage**:
+```typescript
+<SEOHead
+  title="Page Title"
+  description="Page description"
+  ogImage="/og-image.jpg"
+/>
+```
+
+## Component Patterns
+
+### Server vs Client Components
+
+**Server Components** (default):
+- No `'use client'` directive
+- Rendered on server
+- No interactivity
+- Can import server-only modules
+
+**Client Components**:
+- `'use client'` directive
+- Rendered on client
+- Interactive features
+- Can use hooks, event handlers
+
+### Component Composition
+
+```typescript
+// Compose components
+<InboxCard
+  email={email}
+  onFavorite={handleFavorite}
+  onRead={handleRead}
+/>
+```
+
+### Props Interface
+
+```typescript
+interface InboxCardProps {
+  email: Email;
+  onFavorite: (id: string) => void;
+  onRead: (id: string, isRead: boolean) => void;
+}
+```
+
+## Related Documentation
+
+- [Architecture](/docs/frontend/architecture) - System architecture
+- [Pages](/docs/frontend/pages) - Page components
+- [API Integration](/docs/frontend/api-integration) - API usage

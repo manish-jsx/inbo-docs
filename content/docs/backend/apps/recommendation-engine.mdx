@@ -1,0 +1,387 @@
+---
+title: Recommendation Engine
+description: Personalized newsletter recommendations with hybrid scoring algorithm
+---
+
+# Recommendation Engine (`recommendation_engine`)
+
+The Recommendation Engine provides personalized newsletter recommendations based on user behavior, preferences, and newsletter metadata using a hybrid scoring algorithm.
+
+## Overview
+
+The Recommendation Engine implements a comprehensive recommendation system that:
+- **Tracks User Events**: Captures all user interactions (open, click, follow, etc.)
+- **Manages Features**: Maintains user and item features for scoring
+- **Generates Candidates**: Creates personalized, trending, and category-based recommendations
+- **Hybrid Scoring**: Combines personalization, popularity, and freshness scores
+- **Explains Recommendations**: Provides detailed explanations for why items are recommended
+
+## Architecture
+
+See [Recommendation Engine Architecture](/docs/backend/architecture/recommendation-engine) for detailed architecture diagrams.
+
+## Key Models
+
+### UserEvent
+
+**Table**: `recommendation_engine_userevent`
+
+**Purpose**: Tracks all user interactions
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User
+- `event_type` (CharField) - Event type (open, click, follow, unsubscribe, read_duration, share, dismiss, dwell_time)
+- `item_id` (UUID) - Item ID (newsletter provider, email, post)
+- `item_type` (CharField) - Item type (email, post, provider)
+- `metadata` (JSONField) - Additional context (device_type, app_section, session_id)
+- `created_at` (DateTime) - Event timestamp
+
+**Event Types**:
+- `open` - Item opened/viewed
+- `click` - Item clicked
+- `follow` - Newsletter followed/subscribed
+- `unsubscribe` - Newsletter unsubscribed
+- `read_duration` - Reading time tracked
+- `share` - Item shared
+- `dismiss` - Item dismissed
+- `dwell_time` - Time spent on item
+
+### UserFeature
+
+**Table**: `recommendation_engine_userfeature`
+
+**Purpose**: Cached user preferences and engagement metrics
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (OneToOneField) - User
+- `category_preferences` (JSONField) - Category preferences with scores
+- `tag_preferences` (JSONField) - Tag preferences
+- `language_preferences` (JSONField) - Language preferences
+- `engagement_vector` (JSONField) - Engagement scores (last 30 days)
+- `total_opens` (Integer) - Total opens
+- `total_clicks` (Integer) - Total clicks
+- `total_follows` (Integer) - Total follows
+- `avg_read_duration` (Float) - Average read duration
+- `last_updated` (DateTime) - Last update timestamp
+
+**Relationships**:
+- One-to-One: `user` → User
+
+### ItemFeature
+
+**Table**: `recommendation_engine_itemfeature`
+
+**Purpose**: Newsletter features and metrics
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `item_id` (CharField) - Item ID (NewsletterProvider ID)
+- `item_type` (CharField) - Item type (provider)
+- `topics_embedding` (JSONField) - Content embeddings (future)
+- `popularity_score` (Float) - Popularity score
+- `reputation_score` (Float) - Provider reputation
+- `subscriber_count` (Integer) - Subscriber count
+- `open_rate` (Float) - Average open rate
+- `click_rate` (Float) - Average click rate
+- `freshness_boost` (Float) - Freshness boost score
+- `last_updated` (DateTime) - Last update timestamp
+
+### Recommendation
+
+**Table**: `recommendation_engine_recommendation`
+
+**Purpose**: Precomputed recommendations
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User
+- `item_id` (CharField) - Recommended item ID
+- `item_type` (CharField) - Item type
+- `score` (Float) - Final recommendation score
+- `personal_score` (Float) - Personalization score
+- `popularity_score` (Float) - Popularity score
+- `freshness_score` (Float) - Freshness score
+- `similarity_score` (Float) - Similarity score (future)
+- `ranking` (Integer) - Ranking position
+- `explanation` (TextField) - Explanation text
+- `created_at` (DateTime) - Creation timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+
+### RecommendationExplanation
+
+**Table**: `recommendation_engine_recommendationexplanation`
+
+**Purpose**: Detailed explanations for recommendations
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User
+- `item_id` (CharField) - Item ID
+- `explanation` (TextField) - Explanation text
+- `contributing_factors` (JSONField) - Contributing factors
+- `similar_items` (JSONField) - Similar items
+- `created_at` (DateTime) - Creation timestamp
+
+## Services
+
+### EventIngestionService
+
+**Purpose**: Ingests user events and triggers feature updates
+
+**Key Methods**:
+- `ingest_event(user_id, event_type, item_id, item_type, metadata)` - Ingest single event
+- `ingest_batch_events(user_id, events)` - Ingest multiple events
+- Triggers async Celery tasks for feature updates
+
+### FeatureStoreService
+
+**Purpose**: Manages user and item features
+
+**Key Methods**:
+- `get_or_create_user_features(user_id)` - Get or create user features
+- `update_user_features(user_id, data)` - Update user features
+- `get_or_create_item_features(item_id, item_type)` - Get or create item features
+- `update_item_features(item_id, data)` - Update item features
+- `aggregate_features_from_events(user_id)` - Aggregate features from events
+
+### CandidateGeneratorService
+
+**Purpose**: Generates recommendation candidates
+
+**Key Methods**:
+- `generate_candidates_for_user(user_id, limit)` - Generate personalized candidates
+- `generate_candidates_by_popularity(limit)` - Generate popular candidates
+- `generate_candidates_by_category(category_id, limit)` - Generate category candidates
+- `score_candidates(user_id, candidates)` - Score candidates using hybrid algorithm
+- `apply_diversity_filter(candidates, limit)` - Apply diversity filtering
+
+## API Endpoints
+
+### Event Ingestion
+
+#### POST `/api/recommendation/events/ingest/`
+Ingest a single user event.
+
+**Request Body**:
+```json
+{
+  "eventType": "open",
+  "itemId": "newsletter-provider-id",
+  "itemType": "provider",
+  "metadata": {
+    "deviceType": "mobile",
+    "appSection": "home",
+    "sessionId": "session-123"
+  }
+}
+```
+
+**Response** (201):
+```json
+{
+  "id": "...",
+  "eventType": "open",
+  "itemId": "...",
+  "createdAt": "2025-01-24T10:00:00Z"
+}
+```
+
+#### POST `/api/recommendation/events/batch/`
+Ingest multiple events in batch.
+
+**Request Body**:
+```json
+{
+  "events": [
+    {
+      "eventType": "open",
+      "itemId": "...",
+      "itemType": "provider"
+    },
+    {
+      "eventType": "click",
+      "itemId": "...",
+      "itemType": "provider"
+    }
+  ]
+}
+```
+
+### Recommendations
+
+#### GET `/api/recommendation/recommendations/user/<user_id>/`
+Get personalized recommendations for a user.
+
+**Query Parameters**:
+- `limit` (optional): Number of recommendations (default: 20)
+- `offset` (optional): Offset for pagination
+
+**Response** (200):
+```json
+{
+  "recommendations": [
+    {
+      "id": "...",
+      "itemId": "...",
+      "itemType": "provider",
+      "score": 0.85,
+      "personalScore": 0.4,
+      "popularityScore": 0.35,
+      "freshnessScore": 0.1,
+      "ranking": 1,
+      "explanation": "Recommended because you like Tech newsletters"
+    }
+  ],
+  "total": 50
+}
+```
+
+#### GET `/api/recommendation/recommendations/trending/`
+Get trending recommendations.
+
+**Query Parameters**:
+- `limit` (optional): Number of recommendations (default: 20)
+
+**Response** (200):
+```json
+{
+  "recommendations": [
+    {
+      "itemId": "...",
+      "itemType": "provider",
+      "score": 0.92,
+      "popularityScore": 0.6,
+      "freshnessScore": 0.32
+    }
+  ]
+}
+```
+
+#### GET `/api/recommendation/recommendations/category/<category_id>/`
+Get category-based recommendations.
+
+**Query Parameters**:
+- `limit` (optional): Number of recommendations (default: 20)
+
+#### GET `/api/recommendation/recommendations/explain/<user_id>/<item_id>/`
+Get explanation for a recommendation.
+
+**Response** (200):
+```json
+{
+  "explanation": "Recommended because you like Tech newsletters and this is trending",
+  "contributingFactors": {
+    "categoryMatch": 0.8,
+    "popularity": 0.6,
+    "freshness": 0.4
+  },
+  "similarItems": [...]
+}
+```
+
+## Scoring Algorithm
+
+### Hybrid Scoring Formula
+
+```
+score = α * personal_score + β * popularity_score + γ * freshness_score
+```
+
+Where:
+- `α = 0.4` (Personalization weight)
+- `β = 0.4` (Popularity weight)
+- `γ = 0.2` (Freshness weight)
+
+### Personal Score Calculation
+
+- **Category Match**: How well item categories match user preferences
+- **Engagement Vector**: User's engagement with similar items (last 30 days)
+- **Tag Preferences**: Tag overlap with user preferences
+
+### Popularity Score Calculation
+
+- **Provider Reputation**: Reputation score from directory
+- **Subscriber Count**: Total number of subscribers
+- **Average Open/Click Rates**: Engagement metrics
+
+### Freshness Score Calculation
+
+- **Time Decay**: Boost for new/recent items
+- **Decay Function**: Decays from 1.0 to 0.5 over 60 days
+- **Formula**: `freshness = max(0.5, 1.0 - (days_old / 60))`
+
+## Background Tasks (Celery)
+
+### Feature Updates
+- `update_user_features_task` - Update user features from events
+- `update_item_features_task` - Update item features from events
+- `batch_update_features_task` - Batch update all features
+
+### Recommendation Generation
+- `precompute_recommendations_task` - Precompute user recommendations
+- `refresh_trending_recommendations_task` - Refresh trending items
+
+### Event Processing
+- `process_event_batch_task` - Process batch of events
+
+## Usage Examples
+
+### Track User Event
+
+```python
+import requests
+
+headers = {'Authorization': 'Bearer <access_token>'}
+
+response = requests.post(
+    'https://api.inbo.me/api/recommendation/events/ingest/',
+    headers=headers,
+    json={
+        'eventType': 'open',
+        'itemId': 'newsletter-provider-id',
+        'itemType': 'provider',
+        'metadata': {
+            'deviceType': 'mobile',
+            'appSection': 'home'
+        }
+    }
+)
+```
+
+### Get Personalized Recommendations
+
+```python
+response = requests.get(
+    'https://api.inbo.me/api/recommendation/recommendations/user/<user_id>/',
+    headers=headers,
+    params={'limit': 20}
+)
+
+recommendations = response.json()['recommendations']
+```
+
+## Integration
+
+### With Experience App
+- Provides personalized candidates for experience sections
+- Uses user features for scoring
+- Integrates with event tracking
+
+### With Directory App
+- Uses NewsletterProvider data for item features
+- Links recommendations to providers
+
+### With Search App
+- Can use search results as candidates
+- Re-ranks search results using recommendation scores
+
+## Related Documentation
+
+- [Recommendation Engine Architecture](/docs/backend/architecture/recommendation-engine)
+- [Experience App](/docs/backend/apps/experience-app)
+- [Directory App](/docs/backend/apps/directory-app)
+- [API Reference](/openapi/api-reference)

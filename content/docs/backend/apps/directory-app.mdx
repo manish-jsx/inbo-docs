@@ -1,0 +1,283 @@
+---
+title: Directory App
+description: Newsletter directory with categories, tags, and search
+---
+
+# Directory App (`directory_app`)
+
+The Directory App provides a comprehensive newsletter directory with search, categories, tags, and detailed provider information.
+
+## Overview
+
+The `directory_app` provides:
+- **Newsletter Directory**: Public directory of newsletter providers
+- **Search Functionality**: Search newsletters by name, description, author
+- **Categories**: Organize newsletters by categories
+- **Tags & Metadata**: Rich metadata (tags, tones, audience levels, content intents, formats)
+- **Recommendations**: Personalized newsletter recommendations
+- **Provider Details**: Detailed information about each newsletter
+
+## Key Models
+
+### NewsletterProvider
+
+**Table**: `directory_app_newsletterprovider`
+
+**Purpose**: Newsletter provider directory entry
+
+**Key Fields**:
+- `id` (CharField) - Primary key (provider identifier)
+- `name` (CharField) - Provider name
+- `description` (TextField) - Description
+- `url` (URLField) - Provider URL
+- `domain` (CharField) - Domain
+- `author` (CharField) - Author name
+- `target_audience` (TextField) - Target audience
+- `value_proposition` (TextField) - Value proposition
+- `language` (CharField) - Language
+- `content_frequency` (CharField) - Content frequency
+- `location` (CharField) - Location
+- `icon_url` (URLField) - Icon URL
+
+**Relationships**:
+- Many-to-Many: `categories` → NewsletterCategory
+- Many-to-Many: `tags` → NewsletterTag
+- Many-to-Many: `tones` → NewsletterTone
+- Many-to-Many: `audience_levels` → NewsletterAudienceLevel
+- Many-to-Many: `content_intents` → NewsletterContentIntent
+- Many-to-Many: `content_formats` → NewsletterContentFormat
+
+### NewsletterCategory
+
+**Table**: `directory_app_newslettercategory`
+
+**Purpose**: Newsletter categories
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `name` (CharField) - Category name
+- `description` (TextField) - Description
+- `slug` (SlugField) - URL slug
+- `level` (Integer) - Category level (hierarchy)
+
+**Relationships**:
+- Many-to-Many: `providers` → NewsletterProvider
+
+### NewsletterTag
+
+**Table**: `directory_app_newslettertag`
+
+**Purpose**: Newsletter tags
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `name` (CharField) - Tag name
+- `slug` (SlugField) - URL slug
+
+**Relationships**:
+- Many-to-Many: `providers` → NewsletterProvider
+
+### Additional Metadata Models
+
+- **NewsletterTone**: Newsletter tone (formal, casual, etc.)
+- **NewsletterAudienceLevel**: Audience level (beginner, intermediate, advanced)
+- **NewsletterContentIntent**: Content intent (informational, promotional, etc.)
+- **NewsletterContentFormat**: Content format (article, video, podcast, etc.)
+
+## Services
+
+### DirectoryService
+
+**Purpose**: Newsletter directory operations
+
+**Key Methods**:
+- `search_newsletters(query, category, page, limit)` - Search newsletters
+- `get_newsletter_details(provider_id)` - Get provider details
+- `get_categories()` - Get all categories
+- `get_category_providers(category_id)` - Get providers in category
+- `get_recommendations(user_id, limit)` - Get personalized recommendations
+
+## API Endpoints
+
+### Search Newsletters
+
+#### GET `/api/directory/search/`
+Search newsletters in the directory (public endpoint).
+
+**Query Parameters**:
+- `query` (optional): Search query
+- `category` (optional): Filter by category
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Results per page (default: 20)
+
+**Response** (200):
+```json
+{
+  "data": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "name": "Tech Newsletter",
+      "url": "https://example.com",
+      "domain": "example.com",
+      "author": "John Doe",
+      "description": "Weekly tech news"
+    }
+  ],
+  "total": 100,
+  "page": 1,
+  "limit": 20
+}
+```
+
+### Newsletter Details
+
+#### GET `/api/directory/<id>/`
+Get detailed information about a newsletter (public endpoint).
+
+**Response** (200):
+```json
+{
+  "id": "...",
+  "name": "Tech Newsletter",
+  "url": "https://example.com",
+  "domain": "example.com",
+  "author": "John Doe",
+  "description": "Weekly tech news",
+  "targetAudience": "Developers",
+  "valueProposition": "Stay updated with latest tech",
+  "categories": ["Technology", "Programming"],
+  "tags": ["tech", "coding"],
+  "tones": ["informative"],
+  "audienceLevels": ["intermediate"],
+  "contentIntents": ["educational"],
+  "contentFormats": ["article"]
+}
+```
+
+### Categories
+
+#### GET `/api/directory/categories/`
+Get all newsletter categories (public endpoint).
+
+**Response** (200):
+```json
+[
+  {
+    "id": "...",
+    "name": "Technology",
+    "description": "Tech-related newsletters",
+    "slug": "technology",
+    "level": 1
+  }
+]
+```
+
+### Recommendations
+
+#### GET `/api/directory/recommendations/`
+Get personalized newsletter recommendations (authenticated).
+
+**Query Parameters**:
+- `limit` (optional): Number of recommendations (default: 10)
+
+**Response** (200):
+```json
+[
+  {
+    "id": "...",
+    "name": "Tech Newsletter",
+    "url": "https://example.com",
+    "description": "Weekly tech news",
+    "score": 0.95
+  }
+]
+```
+
+### Preview Endpoints
+
+#### GET `/api/directory/search-newsletters-preview/`
+Get preview of newsletter search (limited to 5 results).
+
+#### GET `/api/directory/search-categories-preview/`
+Get preview of category search.
+
+#### GET `/api/directory/search-category-newsletters-preview/`
+Get preview of newsletters in category.
+
+## Search Integration
+
+The directory app integrates with the search app for full-text search:
+
+- Uses Bonsai.io/Elasticsearch for newsletter provider search
+- Indexes: name, description, author, categories, tags
+- Global search (available to all users)
+- Fast search with Redis caching
+
+## Usage Examples
+
+### Search Newsletters
+
+```python
+import requests
+
+# Public endpoint - no auth required
+response = requests.get(
+    'https://api.inbo.me/api/directory/search/',
+    params={
+        'query': 'tech',
+        'category': 'Technology',
+        'page': 1,
+        'limit': 20
+    }
+)
+
+results = response.json()
+```
+
+### Get Newsletter Details
+
+```python
+response = requests.get(
+    'https://api.inbo.me/api/directory/<newsletter-id>/'
+)
+
+newsletter = response.json()
+```
+
+### Get Recommendations
+
+```python
+headers = {'Authorization': 'Bearer <access_token>'}
+
+response = requests.get(
+    'https://api.inbo.me/api/directory/recommendations/',
+    headers=headers,
+    params={'limit': 10}
+)
+
+recommendations = response.json()
+```
+
+## Integration
+
+### With Search App
+- Uses search app for full-text search
+- Indexes newsletter providers in Elasticsearch
+- Provides fast search with caching
+
+### With Recommendation Engine
+- Provides newsletter data for recommendations
+- Links to UserFeature and ItemFeature
+- Used for personalized recommendations
+
+### With Newsletter Profile App
+- Links to newsletter preferences
+- Provides provider data for subscriptions
+- Tracks newsletter subscriptions
+
+## Related Documentation
+
+- [Search App](/docs/backend/apps/search-app)
+- [Recommendation Engine](/docs/backend/apps/recommendation-engine)
+- [Newsletter Profile App](/docs/backend/apps/newsletter-profile-app)
+- [API Reference](/openapi/api-reference)

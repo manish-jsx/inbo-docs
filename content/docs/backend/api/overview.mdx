@@ -1,0 +1,253 @@
+---
+title: API Overview
+description: Complete API documentation for the INBO Backend
+---
+
+# API Documentation Overview
+
+The INBO Backend provides a comprehensive REST API built with Django REST Framework. All endpoints follow RESTful conventions and return JSON responses.
+
+## Base URL
+
+```
+Production: https://inbo-django-api.azurewebsites.net
+Development: http://localhost:8000
+```
+
+## Authentication
+
+Most endpoints require JWT authentication. Include the access token in the Authorization header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+### Getting Tokens
+
+1. **Send OTP**: `POST /api/auth/otp/send/`
+2. **Verify OTP**: `POST /api/auth/otp/verify/`
+3. **Get Tokens**: `POST /api/auth/token/`
+
+### Token Refresh
+
+```http
+POST /api/auth/token/refresh/
+Content-Type: application/json
+
+{
+  "refresh": "<refresh_token>"
+}
+```
+
+## API Endpoints
+
+### Authentication (`/api/auth/`)
+
+- `POST /api/auth/otp/send/` - Send OTP email
+- `POST /api/auth/otp/verify/` - Verify OTP
+- `POST /api/auth/token/` - Get JWT tokens
+- `POST /api/auth/token/refresh/` - Refresh access token
+- `POST /api/auth/device/register/` - Register device
+
+### User Management (`/api/user/`)
+
+- `GET /api/user/profile/` - Get user profile
+- `PUT /api/user/profile/` - Update profile
+- `GET /api/user/complete-data/` - Get complete user data
+- `GET /api/user/is-verified/` - Check verification status
+- `POST /api/user/onboarding/` - Complete onboarding
+- `GET /api/user/onboarding/status/` - Check onboarding status
+- `POST /api/user/create-inbox/` - Create @inbo.me inbox
+- `GET /api/user/check-inbox-availability/` - Check username availability
+- `GET /api/user/dashboard-data/` - Get dashboard data
+- `GET /api/user/inbox-accounts/` - Get inbox accounts
+- `GET /api/user/folders/` - Get folders
+- `POST /api/user/folder/<name>/` - Create folder
+- `DELETE /api/user/folder/<name>/` - Delete folder
+
+### Email Operations (`/api/email/`)
+
+- `GET /api/email/inbox/` - Get inbox emails
+- `GET /api/email/favorites/` - Get favorite emails
+- `GET /api/email/read-later/` - Get read-later emails
+- `GET /api/email/trash/` - Get trash emails
+- `POST /api/email/trash/empty/` - Empty trash
+- `GET /api/email/<id>/` - Get email details
+- `PUT /api/email/<id>/progress/` - Update reading progress
+- `POST /api/email/<id>/favorite/` - Toggle favorite
+- `POST /api/email/<id>/readlater/` - Toggle read later
+- `POST /api/email/<id>/trash/` - Move to trash
+- `POST /api/email/<id>/restore/` - Restore from trash
+- `DELETE /api/email/<id>/delete/` - Permanently delete
+- `POST /api/email/<id>/highlight/` - Add highlight
+- `PUT /api/email/<id>/highlight/<highlight_id>/note/` - Update highlight note
+- `DELETE /api/email/<id>/highlight/<highlight_id>/` - Delete highlight
+- `POST /api/email/<id>/move/<folder_name>/` - Move to folder
+- `POST /api/email/<id>/toggle-share/` - Toggle sharing
+- `GET /api/email/<id>/shared/` - Get public email
+- `POST /api/email/<id>/summary/` - Summarize email
+- `GET /api/email/search/emails/` - Search emails
+
+### Reading Statistics (`/api/reading/`)
+
+- `GET /api/reading/stats/` - Get reading statistics
+- `GET /api/reading/streak/` - Get streak information
+- `PUT /api/reading/progress/` - Update reading progress
+- `GET /api/reading/time-range-stats/` - Get time range statistics
+- `GET /api/reading/global-stats/` - Get global statistics
+
+### Newsletter Directory (`/api/directory/`)
+
+- `GET /api/directory/providers/` - List/search providers
+- `GET /api/directory/providers/<id>/` - Get provider details
+- `GET /api/directory/categories/` - List categories
+- `GET /api/directory/categories/<id>/` - Get category details
+- `GET /api/directory/categories/<id>/providers/` - Get providers in category
+
+### Newsletter Profile (`/api/newsletter-profile/`)
+
+- `GET /api/newsletter-profile/profile/` - Get profile
+- `PUT /api/newsletter-profile/profile/` - Update profile
+- `GET /api/newsletter-profile/preferences/` - Get preferences
+- `POST /api/newsletter-profile/preferences/` - Create preference
+- `PUT /api/newsletter-profile/preferences/<id>/` - Update preference
+- `DELETE /api/newsletter-profile/preferences/<id>/` - Delete preference
+- `GET /api/newsletter-profile/posts/` - Get posts
+- `GET /api/newsletter-profile/posts/<id>/` - Get post details
+
+### Search (`/api/search/`)
+
+- `GET /api/search/unified/` - Unified search across all types
+- `GET /api/search/providers/` - Search newsletter providers
+- `GET /api/search/emails/` - Search emails
+- `GET /api/search/posts/` - Search newsletter posts
+
+**Query Parameters**:
+- `q` - Search query (required)
+- `page` - Page number (default: 1)
+- `page_size` - Results per page (default: 20)
+- `types` - Content types (for unified search)
+
+### Recommendations (`/api/recommendation/`)
+
+- `POST /api/recommendation/events/` - Track user event
+- `GET /api/recommendation/events/` - Get user events
+- `GET /api/recommendation/recommendations/` - Get recommendations
+
+**Query Parameters**:
+- `limit` - Number of recommendations (default: 20)
+- `type` - Recommendation type (personalized, popular, trending)
+
+### Experience (`/api/experience/`)
+
+- `GET /api/experience/page/<page>/` - Get personalized experience
+- `POST /api/experience/interactions/` - Track interaction
+
+**Pages**: `home`, `search`, `category`, `reading`, `profile`
+
+### Subscriptions (`/api/subscription/`)
+
+- `GET /api/subscription/plans/` - List plans
+- `GET /api/subscription/plans/<id>/` - Get plan details
+- `GET /api/subscription/subscriptions/` - Get user subscriptions
+- `POST /api/subscription/subscriptions/` - Create subscription
+- `PUT /api/subscription/subscriptions/<id>/` - Update subscription
+- `DELETE /api/subscription/subscriptions/<id>/` - Cancel subscription
+- `POST /api/subscription/payments/` - Process payment
+
+### Gmail Integration (`/api/gmail/`)
+
+- `GET /api/gmail/connect/` - Initiate OAuth flow
+- `GET /api/gmail/callback/` - OAuth callback
+- `POST /api/gmail/sync/` - Sync emails
+- `GET /api/gmail/accounts/` - Get connected accounts
+- `DELETE /api/gmail/accounts/<id>/` - Disconnect account
+
+### Integrations (`/api/integration/`)
+
+- `GET /api/integration/` - List integrations
+- `POST /api/integration/<provider>/connect/` - Connect integration
+- `POST /api/integration/<provider>/sync/` - Sync content
+- `DELETE /api/integration/<id>/` - Disconnect integration
+
+**Providers**: `pocket`, `notion`, `evernote`
+
+### Webhooks (`/api/webhook/`)
+
+- `POST /api/webhook/stripe/` - Stripe webhook
+- `POST /api/webhook/<provider>/` - Generic webhook
+
+### Waitlist (`/api/waitlist/`)
+
+- `POST /api/waitlist/` - Join waitlist
+- `GET /api/waitlist/status/` - Check status
+
+### Account Deletion (`/api/account-deletion/`)
+
+- `POST /api/account-deletion/request/` - Request deletion
+- `GET /api/account-deletion/status/` - Check status
+
+## Response Format
+
+### Success Response
+
+```json
+{
+  "data": { ... },
+  "message": "Success message",
+  "status": "success"
+}
+```
+
+### Error Response
+
+```json
+{
+  "error": "Error message",
+  "status": "error",
+  "code": "ERROR_CODE"
+}
+```
+
+### Paginated Response
+
+```json
+{
+  "count": 100,
+  "next": "http://api.example.com/endpoint/?page=2",
+  "previous": null,
+  "results": [ ... ]
+}
+```
+
+## Status Codes
+
+- `200 OK` - Successful request
+- `201 Created` - Resource created
+- `204 No Content` - Successful deletion
+- `400 Bad Request` - Invalid request
+- `401 Unauthorized` - Authentication required
+- `403 Forbidden` - Permission denied
+- `404 Not Found` - Resource not found
+- `500 Internal Server Error` - Server error
+
+## Rate Limiting
+
+Some endpoints have rate limiting:
+- OTP sending: 5 requests per hour per email
+- Search: 100 requests per minute per user
+- API requests: 1000 requests per hour per user
+
+## API Documentation
+
+Interactive API documentation is available at:
+- **Swagger UI**: `/api/docs/`
+- **ReDoc**: `/api/redoc/`
+- **OpenAPI Schema**: `/api/schema/`
+
+## Next Steps
+
+- [Authentication API](/docs/backend/api/authentication) - Detailed authentication endpoints
+- [User API](/docs/backend/api/user) - User management endpoints
+- [Email API](/docs/backend/api/email) - Email operation endpoints
+- [Search API](/docs/backend/api/search) - Search endpoints

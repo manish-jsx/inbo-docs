@@ -1,0 +1,319 @@
+---
+title: Gmail App
+description: Gmail OAuth integration and email synchronization
+---
+
+# Gmail App (`gmail_app`)
+
+The Gmail App handles Gmail account integration, OAuth authentication, and email synchronization from Gmail accounts.
+
+## Overview
+
+The `gmail_app` provides:
+- **Gmail OAuth**: Connect Gmail accounts via OAuth 2.0
+- **Email Synchronization**: Sync emails from Gmail accounts
+- **Account Management**: Manage connected Gmail accounts
+- **Allowed Senders**: Control which senders to sync
+- **Sync Controls**: Manage sync settings and frequency
+
+## Key Models
+
+### GmailAccount
+
+**Table**: `gmail_accounts`
+
+**Purpose**: Connected Gmail accounts
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `email` (EmailField) - Gmail email address
+- `access_token` (TextField) - OAuth access token (encrypted)
+- `refresh_token` (TextField) - OAuth refresh token (encrypted)
+- `token_expiry` (DateTime) - Token expiration
+- `needs_reauth` (Boolean) - Re-authentication required
+- `last_sync_time` (DateTime) - Last sync timestamp
+- `sync_enabled` (Boolean) - Sync enabled status
+- `created_at` (DateTime) - Connection timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+- One-to-Many: `allowed_senders` → AllowedSender
+- One-to-One: `sync_control` → SyncControl
+
+### AllowedSender
+
+**Table**: `allowed_senders`
+
+**Purpose**: Allowed email senders for syncing
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `gmail_account` (ForeignKey) - Gmail account
+- `sender_email` (EmailField) - Allowed sender email
+- `created_at` (DateTime) - Creation timestamp
+
+**Relationships**:
+- Many-to-One: `gmail_account` → GmailAccount
+
+### SyncControl
+
+**Table**: `sync_controls`
+
+**Purpose**: Email sync control settings
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `gmail_account` (OneToOneField) - Gmail account
+- `last_offset` (CharField) - Last sync offset (Gmail historyId)
+- `sync_frequency` (Integer) - Sync frequency in minutes
+- `max_emails_per_sync` (Integer) - Maximum emails per sync
+- `created_at` (DateTime) - Creation timestamp
+
+**Relationships**:
+- One-to-One: `gmail_account` → GmailAccount
+
+## Services
+
+### GmailService
+
+**Purpose**: Gmail integration management
+
+**Key Methods**:
+- `get_gmail_accounts(user_id)` - Get all Gmail accounts
+- `connect_gmail(user_id, email, access_token, refresh_token)` - Connect Gmail account
+- `disconnect_gmail(user_id, account_id)` - Disconnect Gmail account
+- `sync_gmail(user_id, account_id)` - Sync emails from Gmail
+- `get_allowed_senders(account_id)` - Get allowed senders
+- `add_allowed_sender(account_id, email)` - Add allowed sender
+
+## API Endpoints
+
+### Gmail Accounts
+
+#### GET `/api/gmail/accounts/`
+Get all connected Gmail accounts.
+
+**Response** (200):
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "email": "user@gmail.com",
+    "needsReauth": false,
+    "lastSyncTime": "2025-12-24T10:00:00Z"
+  }
+]
+```
+
+### Connect Gmail
+
+#### POST `/api/gmail/connect/`
+Connect a Gmail account using OAuth tokens.
+
+**Request Body**:
+```json
+{
+  "email": "user@gmail.com",
+  "accessToken": "ya29.a0AfH6SMC...",
+  "refreshToken": "1//0g..."
+}
+```
+
+**Response** (200):
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "email": "user@gmail.com",
+  "connectedAt": "2025-12-24T10:00:00Z"
+}
+```
+
+### Disconnect Gmail
+
+#### POST `/api/gmail/disconnect/`
+Disconnect a Gmail account.
+
+**Request Body**:
+```json
+{
+  "accountId": "123e4567-e89b-12d3-a456-426614174000"
+}
+```
+
+**Response** (200):
+```json
+{
+  "success": true
+}
+```
+
+### Sync Gmail
+
+#### POST `/api/gmail/sync/`
+Sync emails from a connected Gmail account.
+
+**Request Body**:
+```json
+{
+  "accountId": "123e4567-e89b-12d3-a456-426614174000"
+}
+```
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "lastSyncTime": "2025-12-24T10:00:00Z",
+  "emailsSynced": 25
+}
+```
+
+## Gmail OAuth Flow
+
+### 1. Initiate OAuth
+
+```python
+# Generate OAuth URL
+oauth_url = f"https://accounts.google.com/o/oauth2/v2/auth?\
+    client_id={GOOGLE_CLIENT_ID}&\
+    redirect_uri={REDIRECT_URI}&\
+    response_type=code&\
+    scope=email profile https://www.googleapis.com/auth/gmail.readonly&\
+    access_type=offline&\
+    prompt=consent"
+```
+
+### 2. OAuth Callback
+
+```python
+# Receive callback with code
+code = request.GET.get('code')
+
+# Exchange code for tokens
+tokens = exchange_code_for_tokens(code)
+
+# Store tokens
+GmailAccount.objects.create(
+    user=user,
+    email=user_email,
+    access_token=tokens['access_token'],
+    refresh_token=tokens['refresh_token'],
+    token_expiry=timezone.now() + timedelta(seconds=tokens['expires_in'])
+)
+```
+
+### 3. Token Refresh
+
+```python
+# Refresh expired token
+if account.token_expiry < timezone.now():
+    new_tokens = refresh_oauth_token(account.refresh_token)
+    account.access_token = new_tokens['access_token']
+    account.token_expiry = timezone.now() + timedelta(seconds=new_tokens['expires_in'])
+    account.save()
+```
+
+## Email Synchronization
+
+### Sync Process
+
+1. **Get Gmail History**: Use Gmail API history endpoint
+2. **Filter Senders**: Only sync from allowed senders (if configured)
+3. **Process Messages**: Fetch and process email messages
+4. **Create Email Records**: Create Email models in database
+5. **Update Sync Control**: Update last_offset (historyId)
+6. **Index Emails**: Index emails in search system
+
+### Sync Frequency
+
+- **Manual**: User-triggered sync via API
+- **Scheduled**: Automatic sync via Celery tasks
+- **Real-time**: Webhook-based sync (future)
+
+## Allowed Senders
+
+### Purpose
+Control which email senders to sync from Gmail.
+
+### Usage
+- If no allowed senders: Sync all emails
+- If allowed senders exist: Only sync from those senders
+- Useful for filtering newsletters and important emails
+
+## Usage Examples
+
+### Connect Gmail Account
+
+```python
+import requests
+
+headers = {'Authorization': 'Bearer <access_token>'}
+
+response = requests.post(
+    'https://api.inbo.me/api/gmail/connect/',
+    headers=headers,
+    json={
+        'email': 'user@gmail.com',
+        'accessToken': 'ya29.a0AfH6SMC...',
+        'refreshToken': '1//0g...'
+    }
+)
+```
+
+### Sync Gmail Emails
+
+```python
+response = requests.post(
+    'https://api.inbo.me/api/gmail/sync/',
+    headers=headers,
+    json={'accountId': 'gmail-account-id'}
+)
+```
+
+### Get Gmail Accounts
+
+```python
+response = requests.get(
+    'https://api.inbo.me/api/gmail/accounts/',
+    headers=headers
+)
+
+accounts = response.json()
+```
+
+## Integration
+
+### With User App
+- Links Gmail accounts to user
+- Tracks Gmail connection status
+- Provides Gmail data in user profile
+
+### With Email App
+- Creates Email models from synced Gmail messages
+- Links emails to user's inbox
+- Integrates with email search
+
+### With Search App
+- Indexes synced emails in search system
+- Makes Gmail emails searchable
+
+## Security
+
+### Token Storage
+- Access tokens encrypted in production
+- Refresh tokens encrypted
+- Secure token rotation
+- Automatic token refresh
+
+### OAuth Scopes
+- `email` - User email
+- `profile` - User profile
+- `https://www.googleapis.com/auth/gmail.readonly` - Read-only Gmail access
+
+## Related Documentation
+
+- [User App](/docs/backend/apps/user-app)
+- [Email App](/docs/backend/apps/email-app)
+- [Search App](/docs/backend/apps/search-app)
+- [API Reference](/openapi/api-reference)

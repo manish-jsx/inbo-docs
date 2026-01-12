@@ -1,0 +1,224 @@
+---
+title: Frontend Introduction
+description: Overview of the INBO Frontend Next.js application
+---
+
+# INBO Frontend - Next.js Application
+
+## Overview
+
+The INBO Frontend is a comprehensive Next.js 16 web application that provides the user interface for the INBO platform. Built with React 19, TypeScript, and Tailwind CSS, it offers a modern, responsive experience for managing newsletters, emails, and reading analytics.
+
+## Technology Stack
+
+### Core Framework
+- **Next.js 16.0.7** - React framework with App Router
+- **React 19.2.0** - UI library
+- **TypeScript 5.3.3** - Type safety
+- **Tailwind CSS 3.4.17** - Utility-first CSS framework
+
+### Key Dependencies
+- **Axios 1.7.7** - HTTP client for API requests
+- **js-cookie 3.0.5** - Cookie management
+- **next-i18next 15.3.1** - Internationalization
+- **next-seo 6.6.0** - SEO optimization
+- **sonner 2.0.7** - Toast notifications
+- **lucide-react 0.555.0** - Icon library
+- **@react-oauth/google 0.12.2** - Google OAuth integration
+
+### Development Tools
+- **ESLint 9.0.0** - Code linting
+- **PostCSS 8.4.49** - CSS processing
+- **Autoprefixer 10.4.20** - CSS vendor prefixes
+
+## Architecture Overview
+
+The frontend follows a modern Next.js App Router architecture with:
+
+### App Router Structure
+- **App Router**: Next.js 16 App Router for routing
+- **Server Components**: Default server-side rendering
+- **Client Components**: Interactive client-side components
+- **Route Groups**: Organized route groups `(dashboard)`, `(auth)`
+
+### Key Directories
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── (dashboard)/       # Protected dashboard routes
+│   ├── auth/              # Authentication pages
+│   └── reading/            # Reading pages
+├── components/            # React components
+│   ├── auth/              # Authentication components
+│   ├── layout/            # Layout components
+│   ├── inbox/             # Inbox components
+│   ├── discover/          # Discovery components
+│   ├── profile/           # Profile components
+│   └── analytics/         # Analytics components
+├── contexts/              # React contexts
+│   └── AuthContext.tsx    # Authentication context
+├── hooks/                 # Custom React hooks
+│   ├── useUser.ts         # User data hook
+│   ├── useEmail.ts        # Email operations hook
+│   └── useNewsletter.ts   # Newsletter hook
+├── services/              # API service layer
+│   ├── auth.ts            # Authentication service
+│   ├── user.ts            # User service
+│   ├── email.ts           # Email service
+│   └── newsletter.ts      # Newsletter service
+├── utils/                 # Utility functions
+│   ├── api.ts             # Axios instance
+│   ├── errors.ts          # Error handling
+│   └── deepLink.ts        # Deep linking
+└── types/                 # TypeScript types
+    └── auth.ts            # Authentication types
+```
+
+## Key Features
+
+### 1. Authentication System
+- **Multiple Auth Methods**: OTP, Magic Link, Google OAuth, Apple Auth
+- **JWT Token Management**: Automatic token refresh
+- **Session Validation**: Secure session handling
+- **Protected Routes**: Route protection with middleware
+
+### 2. Responsive Design
+- **Mobile-First**: Optimized for mobile devices
+- **Desktop Layout**: Full-featured desktop experience
+- **Adaptive UI**: Different layouts for mobile/desktop
+- **Bottom Navigation**: Mobile bottom navigation bar
+
+### 3. Internationalization (i18n)
+- **Multi-Language Support**: English, Spanish, French, German, Hindi, Chinese
+- **Locale Detection**: Automatic locale detection
+- **Translation Management**: Centralized translation files
+
+### 4. SEO Optimization
+- **Dynamic Meta Tags**: Per-page SEO configuration
+- **Open Graph**: Social media sharing support
+- **Twitter Cards**: Twitter sharing optimization
+- **Structured Data**: Ready for structured data
+
+### 5. API Integration
+- **Django Backend**: Full integration with Django REST API
+- **Automatic Token Refresh**: Seamless token management
+- **Error Handling**: Comprehensive error handling
+- **Request Interceptors**: Automatic auth token injection
+
+### 6. State Management
+- **React Context**: AuthContext for global auth state
+- **Custom Hooks**: Reusable hooks for data fetching
+- **Service Layer**: Centralized API service layer
+- **Local State**: Component-level state management
+
+## Pages & Routes
+
+### Public Routes
+- `/` - Landing page
+- `/auth/login` - Login page
+- `/auth/register` - Registration page
+- `/auth/verify` - OTP verification
+- `/auth/verify-magic-link` - Magic link verification
+
+### Protected Routes (Dashboard)
+- `/dashboard` - Main dashboard
+- `/dashboard/inbox` - Email inbox
+- `/dashboard/discover` - Newsletter discovery
+- `/dashboard/subscriptions` - Newsletter subscriptions
+- `/dashboard/analytics` - Reading analytics
+- `/dashboard/profile` - User profile
+- `/dashboard/delete` - Account deletion
+- `/reading/[slug]` - Reading page
+
+## Component Architecture
+
+### Layout Components
+- **Navbar** - Desktop navigation bar
+- **Sidebar** - Desktop sidebar navigation
+- **BottomNav** - Mobile bottom navigation
+- **MobileHeader** - Mobile header
+- **Footer** - Page footer
+
+### Feature Components
+- **Inbox Components** - Email list, filters, actions
+- **Discover Components** - Newsletter discovery, carousels
+- **Profile Components** - User profile, settings
+- **Analytics Components** - Reading stats, streaks, insights
+- **Reading Components** - Reading interface, TTS player
+
+## API Integration
+
+### Base Configuration
+- **Base URL**: Configurable via `NEXT_PUBLIC_API_BASE_URL`
+- **Default**: `https://inbo-django-api.azurewebsites.net/api`
+- **Version**: API v1
+- **Authentication**: Bearer token (JWT)
+
+### Service Layer
+All API calls go through service layer:
+- `authService` - Authentication operations
+- `userService` - User profile and data
+- `emailService` - Email operations
+- `newsletterService` - Newsletter operations
+- `readingService` - Reading statistics
+- `searchService` - Search operations
+
+## Environment Variables
+
+```bash
+# API Configuration
+NEXT_PUBLIC_API_BASE_URL=https://inbo-django-api.azurewebsites.net/api
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# OAuth Configuration
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id
+
+# Deep Linking
+NEXT_PUBLIC_DEEP_LINK_SCHEME=inbo://
+NEXT_PUBLIC_APP_DOMAIN=inbo.app
+
+# CORS
+NEXT_PUBLIC_ALLOWED_ORIGIN=*
+```
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+ or later
+- pnpm (recommended) or npm
+- Django backend running
+
+### Installation
+
+```bash
+# Install dependencies
+pnpm install
+
+# Set up environment variables
+cp .env.example .env.local
+
+# Run development server
+pnpm dev
+```
+
+### Building for Production
+
+```bash
+# Build application
+pnpm build
+
+# Start production server
+pnpm start
+```
+
+## Related Documentation
+
+- [Architecture](/docs/frontend/architecture) - System architecture and design patterns
+- [Components](/docs/frontend/components) - Complete component library
+- [Pages & Routes](/docs/frontend/pages) - Page structure and routing
+- [API Integration](/docs/frontend/api-integration) - Backend API integration
+- [Services](/docs/frontend/services) - Service layer documentation
+- [Hooks](/docs/frontend/hooks) - Custom React hooks
+- [Deployment](/docs/frontend/deployment) - Deployment guide
+- [Backend Documentation](/docs/backend/introduction) - Django backend docs

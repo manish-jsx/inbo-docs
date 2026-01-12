@@ -1,0 +1,353 @@
+---
+title: Email App
+description: Email operations, management, search, highlights, and AI summarization
+---
+
+# Email App (`email_app`)
+
+The Email App handles all email-related operations including inbox management, email search, favorites, read later, highlights, sharing, and AI-powered summarization.
+
+## Overview
+
+The `email_app` provides comprehensive email management functionality, allowing users to organize, search, highlight, and interact with their emails. It integrates with Azure Blob Storage for email content storage and AI services for summarization.
+
+## Key Features
+
+- **Inbox Management**: Get, filter, and organize inbox emails
+- **Email Search**: Full-text search across emails
+- **Favorites & Read Later**: Mark emails for later reading
+- **Highlights**: Add and manage highlights with notes
+- **Email Sharing**: Share emails publicly with unique links
+- **AI Summarization**: Generate AI-powered email summaries
+- **Folder Operations**: Move emails to folders
+- **Trash Management**: Move to trash, restore, permanently delete
+- **Bulk Operations**: Bulk delete and restore
+
+## Services
+
+### EmailService
+
+Main service for email operations.
+
+#### Key Methods
+
+**`get_inbox_emails(user_id: str, page: int, limit: int, is_read: bool, filter_type: str) -> dict`**
+- Retrieves paginated inbox emails
+- Supports filtering by read status
+- Supports sorting by latest/oldest
+- Returns email list with metadata
+
+**`get_email(email_id: str, user_id: str) -> dict`**
+- Retrieves email details
+- Includes full content from Azure Blob Storage
+- Returns formatted email data
+
+**`toggle_favorite(email_id: str, user_id: str) -> dict`**
+- Toggles favorite status
+- Returns updated email status
+
+**`toggle_read_later(email_id: str, user_id: str) -> dict`**
+- Toggles read later status
+- Returns updated email status
+
+**`add_highlight(email_id: str, user_id: str, text: str, note: str) -> dict`**
+- Adds highlight to email
+- Stores highlight with optional note
+- Returns highlight details
+
+**`summarize_email(email_id: str, user_id: str, email_text: str) -> dict`**
+- Generates AI summary using AIService
+- Stores summary in EmailSummary model
+- Returns summary text
+
+## API Endpoints
+
+### Inbox Operations
+
+#### GET `/api/email/inbox/`
+Get paginated inbox emails.
+
+**Query Parameters**:
+- `page` (optional): Page number (default: 1)
+- `isRead` (optional): Filter by read status ("true", "false", or omit for all)
+- `filter` (optional): Sort order ("latest" or "oldest", default: "latest")
+
+**Response** (200):
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "sender": "newsletter@example.com",
+    "subject": "Weekly Newsletter",
+    "contentPreview": "This week we cover...",
+    "dateReceived": "2025-12-24T10:00:00Z",
+    "wordsCount": 500,
+    "isRead": false,
+    "isFavorite": false,
+    "isReadLater": false
+  }
+]
+```
+
+#### GET `/api/email/<id>/`
+Get email details.
+
+**Response** (200):
+```json
+{
+  "id": "...",
+  "sender": "...",
+  "subject": "...",
+  "content": "...",
+  "dateReceived": "...",
+  "isRead": false,
+  "isFavorite": false,
+  "isReadLater": false,
+  "highlights": [...],
+  "folder": null
+}
+```
+
+### Email Actions
+
+#### POST `/api/email/<id>/favorite/`
+Toggle favorite status.
+
+**Response** (200):
+```json
+{
+  "isFavorite": true
+}
+```
+
+#### POST `/api/email/<id>/readlater/`
+Toggle read later status.
+
+**Response** (200):
+```json
+{
+  "isReadLater": true
+}
+```
+
+#### POST `/api/email/<id>/progress/`
+Update reading progress.
+
+**Request Body**:
+```json
+{
+  "progress": 50,
+  "timeSpent": 300
+}
+```
+
+### Highlights
+
+#### POST `/api/email/<id>/highlight/`
+Add highlight.
+
+**Request Body**:
+```json
+{
+  "text": "Important quote",
+  "note": "Remember this"
+}
+```
+
+**Response** (200):
+```json
+{
+  "id": "...",
+  "text": "Important quote",
+  "note": "Remember this",
+  "createdAt": "2025-12-24T10:00:00Z"
+}
+```
+
+#### PUT `/api/email/<id>/highlight/<highlightId>/note/`
+Update highlight note.
+
+**Request Body**:
+```json
+{
+  "note": "Updated note"
+}
+```
+
+#### DELETE `/api/email/<id>/highlight/<highlightId>/`
+Delete highlight.
+
+### Trash Operations
+
+#### GET `/api/email/trash/`
+Get trash emails.
+
+#### POST `/api/email/<id>/trash/`
+Move email to trash.
+
+#### POST `/api/email/<id>/restore/`
+Restore email from trash.
+
+#### DELETE `/api/email/<id>/delete/`
+Permanently delete email.
+
+#### POST `/api/email/trash/empty/`
+Empty trash (permanently delete all).
+
+### Bulk Operations
+
+#### POST `/api/email/permanently-delete-selected/`
+Bulk permanently delete.
+
+**Request Body**:
+```json
+{
+  "emailIds": ["id1", "id2", "id3"]
+}
+```
+
+#### POST `/api/email/restore-selected/`
+Bulk restore.
+
+**Request Body**:
+```json
+{
+  "emailIds": ["id1", "id2", "id3"]
+}
+```
+
+### Search
+
+#### GET `/api/email/search/emails/`
+Search emails.
+
+**Query Parameters**:
+- `q` (required): Search query
+- `folderId` (optional): Filter by folder
+- `isRead` (optional): Filter by read status
+- `isFavorite` (optional): Filter by favorite status
+
+**Response** (200):
+```json
+{
+  "results": [...],
+  "total": 10,
+  "page": 1
+}
+```
+
+### Folders
+
+#### GET `/api/email/folder/<folderName>/`
+Get emails in folder.
+
+### AI Summarization
+
+#### POST `/api/email/<id>/summarize/`
+Generate email summary.
+
+**Request Body**:
+```json
+{
+  "emailText": "Optional email text (if not provided, fetched from storage)"
+}
+```
+
+**Response** (200):
+```json
+{
+  "summary": "This email discusses..."
+}
+```
+
+### Sharing
+
+#### POST `/api/email/<id>/share/`
+Toggle email sharing (make public).
+
+**Response** (200):
+```json
+{
+  "isShared": true,
+  "publicUrl": "https://api.inbo.me/api/email/public/<id>/"
+}
+```
+
+#### GET `/api/email/public/<id>/`
+Get public email (no authentication required).
+
+## Integration
+
+### With Azure Blob Storage
+- Stores email content in Azure Blob Storage
+- Retrieves email content on demand
+- Manages storage paths
+
+### With AI App
+- Uses AIService for email summarization
+- Generates concise summaries
+- Stores summaries for reuse
+
+### With User App
+- Links emails to user folders
+- Tracks email statistics
+- Manages user preferences
+
+### With Reading App
+- Tracks reading progress
+- Updates reading statistics
+- Links to reading logs
+
+## Usage Examples
+
+### Get Inbox Emails
+
+```python
+import requests
+
+headers = {'Authorization': 'Bearer <access_token>'}
+
+# Get latest unread emails
+response = requests.get(
+    'https://api.inbo.me/api/email/inbox/',
+    headers=headers,
+    params={
+        'page': 1,
+        'isRead': 'false',
+        'filter': 'latest'
+    }
+)
+
+emails = response.json()
+```
+
+### Add Highlight
+
+```python
+response = requests.post(
+    'https://api.inbo.me/api/email/<email_id>/highlight/',
+    headers=headers,
+    json={
+        'text': 'Important quote',
+        'note': 'Remember this'
+    }
+)
+```
+
+### Generate Summary
+
+```python
+response = requests.post(
+    'https://api.inbo.me/api/email/<email_id>/summarize/',
+    headers=headers
+)
+
+summary = response.json()['summary']
+```
+
+## Related Documentation
+
+- [User App](/docs/backend/apps/user-app)
+- [Reading App](/docs/backend/apps/reading-app)
+- [AI App](/docs/backend/apps/ai-app)
+- [API Reference](/openapi/api-reference)

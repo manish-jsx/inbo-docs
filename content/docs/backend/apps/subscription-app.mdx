@@ -1,0 +1,316 @@
+---
+title: Subscription App
+description: Stripe subscription management and payment processing
+---
+
+# Subscription App (`subscription_app`)
+
+The Subscription App handles subscription plans, user subscriptions, and payment processing using Stripe.
+
+## Overview
+
+The `subscription_app` provides comprehensive subscription management:
+- **Subscription Plans**: Manage different subscription tiers
+- **Stripe Integration**: Payment processing via Stripe
+- **Subscription Management**: Create, cancel, and manage subscriptions
+- **Payment Tracking**: Track payment transactions
+- **Webhook Handling**: Process Stripe webhooks
+
+## Key Models
+
+### SubscriptionPlan
+
+**Table**: `subscription_app_subscriptionplan`
+
+**Purpose**: Subscription plans
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `name` (CharField) - Plan name (e.g., "Pro", "Premium")
+- `description` (TextField) - Plan description
+- `price` (MoneyField) - Price (using djmoney)
+- `currency` (CharField) - Currency code (USD, EUR, etc.)
+- `billing_interval` (CharField) - Billing interval (MONTHLY, YEARLY)
+- `features` (JSONField) - Plan features list
+- `storage_limit` (BigInteger) - Storage limit in bytes
+- `summarization_limit` (Integer) - AI summarization limit
+- `is_active` (Boolean) - Active status
+
+**Relationships**:
+- One-to-Many: `subscriptions` → Subscription
+- One-to-Many: `users` → User
+
+### Subscription
+
+**Table**: `subscription_app_subscription`
+
+**Purpose**: User subscriptions
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User
+- `subscription_plan` (ForeignKey) - Subscription plan
+- `stripe_subscription_id` (CharField) - Stripe subscription ID
+- `stripe_customer_id` (CharField) - Stripe customer ID
+- `status` (CharField) - Status (ACTIVE, CANCELED, PAST_DUE, etc.)
+- `current_period_start` (DateTime) - Current period start
+- `current_period_end` (DateTime) - Current period end
+- `cancel_at_period_end` (Boolean) - Cancel at period end flag
+- `created_at` (DateTime) - Creation timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+- Many-to-One: `subscription_plan` → SubscriptionPlan
+- One-to-Many: `transactions` → PaymentTransaction
+- One-to-Many: `events` → SubscriptionEvent
+
+### PaymentTransaction
+
+**Table**: `subscription_app_paymenttransaction`
+
+**Purpose**: Payment transactions
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `subscription` (ForeignKey) - Subscription
+- `stripe_payment_intent_id` (CharField) - Stripe payment intent ID
+- `amount` (MoneyField) - Transaction amount
+- `currency` (CharField) - Currency code
+- `status` (CharField) - Payment status (SUCCEEDED, FAILED, PENDING)
+- `created_at` (DateTime) - Transaction timestamp
+
+**Relationships**:
+- Many-to-One: `subscription` → Subscription
+
+### SubscriptionEvent
+
+**Table**: `subscription_app_subscriptionevent`
+
+**Purpose**: Subscription lifecycle events
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `subscription` (ForeignKey) - Subscription
+- `event_type` (CharField) - Event type (CREATED, RENEWED, CANCELED, etc.)
+- `stripe_event_id` (CharField) - Stripe event ID
+- `metadata` (JSONField) - Event metadata
+- `created_at` (DateTime) - Event timestamp
+
+**Relationships**:
+- Many-to-One: `subscription` → Subscription
+
+## Services
+
+### SubscriptionService
+
+**Purpose**: Subscription management
+
+**Key Methods**:
+- `get_subscription_plans()` - Get all active plans
+- `get_user_subscription(user_id)` - Get user's subscription
+- `create_checkout_session(user_id, plan_id)` - Create Stripe checkout session
+- `create_subscription(user_id, plan_id)` - Create subscription directly
+- `confirm_subscription(subscription_id, payment_intent_id, billing_details)` - Confirm subscription
+- `cancel_subscription(user_id)` - Cancel subscription (at period end)
+
+## API Endpoints
+
+### Subscription Plans
+
+#### GET `/api/subscription/plans/`
+Get all available subscription plans (public endpoint).
+
+**Response** (200):
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "name": "Pro",
+    "description": "Professional plan",
+    "price": 9.99,
+    "currency": "USD",
+    "billingInterval": "MONTHLY",
+    "features": ["Unlimited emails", "Advanced analytics"],
+    "storageLimit": 10000,
+    "summarizationLimit": 1000
+  }
+]
+```
+
+### User Subscription
+
+#### GET `/api/subscription/`
+Get current user subscription.
+
+**Response** (200):
+```json
+{
+  "id": "...",
+  "planId": "...",
+  "planName": "Pro",
+  "status": "ACTIVE",
+  "currentPeriodStart": "2025-12-01T00:00:00Z",
+  "currentPeriodEnd": "2026-01-01T00:00:00Z",
+  "cancelAtPeriodEnd": false
+}
+```
+
+### Checkout
+
+#### POST `/api/subscription/checkout/`
+Create Stripe checkout session.
+
+**Request Body**:
+```json
+{
+  "planId": "123e4567-e89b-12d3-a456-426614174000"
+}
+```
+
+**Response** (200):
+```json
+{
+  "sessionId": "cs_test_...",
+  "url": "https://checkout.stripe.com/pay/cs_test_..."
+}
+```
+
+### Subscription Management
+
+#### POST `/api/subscription/create/`
+Create subscription directly (alternative to checkout).
+
+**Request Body**:
+```json
+{
+  "planId": "123e4567-e89b-12d3-a456-426614174000"
+}
+```
+
+**Response** (200):
+```json
+{
+  "subscriptionId": "...",
+  "clientSecret": "pi_...",
+  "subscriptionPlan": {
+    "name": "Pro",
+    "price": 9.99,
+    "interval": "MONTHLY"
+  }
+}
+```
+
+#### POST `/api/subscription/confirm/`
+Confirm subscription after payment.
+
+**Request Body**:
+```json
+{
+  "subscriptionId": "...",
+  "paymentIntentId": "pi_...",
+  "billingDetails": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "address": {
+      "line1": "123 Main St",
+      "city": "New York",
+      "state": "NY",
+      "postal_code": "10001",
+      "country": "US"
+    }
+  }
+}
+```
+
+#### POST `/api/subscription/cancel/`
+Cancel subscription (cancels at period end).
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "message": "Subscription will be canceled at period end",
+  "cancelAtPeriodEnd": true
+}
+```
+
+## Stripe Integration
+
+### Configuration
+
+```bash
+# Stripe Configuration
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+### Webhook Events
+
+The app processes the following Stripe webhook events:
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.payment_succeeded`
+- `invoice.payment_failed`
+
+### Payment Flow
+
+1. **Create Checkout Session**: User selects plan → Create Stripe checkout session
+2. **Payment**: User completes payment on Stripe checkout page
+3. **Webhook**: Stripe sends webhook event
+4. **Confirm Subscription**: Backend confirms subscription and updates user
+
+## Usage Examples
+
+### Get Subscription Plans
+
+```python
+import requests
+
+# Public endpoint - no auth required
+response = requests.get('https://api.inbo.me/api/subscription/plans/')
+plans = response.json()
+```
+
+### Create Checkout Session
+
+```python
+headers = {'Authorization': 'Bearer <access_token>'}
+
+response = requests.post(
+    'https://api.inbo.me/api/subscription/checkout/',
+    headers=headers,
+    json={'planId': 'pro-plan-id'}
+)
+
+checkout = response.json()
+# Redirect user to checkout['url']
+```
+
+### Cancel Subscription
+
+```python
+response = requests.post(
+    'https://api.inbo.me/api/subscription/cancel/',
+    headers=headers
+)
+```
+
+## Integration
+
+### With User App
+- Updates user's `subscription_plan` and `subscription_status`
+- Links subscription to user account
+- Tracks subscription in user profile
+
+### With Webhook App
+- Processes Stripe webhook events
+- Updates subscription status
+- Handles payment events
+
+## Related Documentation
+
+- [User App](/docs/backend/apps/user-app)
+- [Webhook App](/docs/backend/apps/webhook-app)
+- [API Reference](/openapi/api-reference)

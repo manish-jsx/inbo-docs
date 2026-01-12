@@ -1,0 +1,300 @@
+---
+title: Integration App
+description: Third-party service integrations (Pocket, Notion, Evernote)
+---
+
+# Integration App (`integration_app`)
+
+The Integration App manages connections to third-party services including Pocket, Notion, and Evernote for content synchronization and saving.
+
+## Overview
+
+The `integration_app` provides:
+- **OAuth Integration**: Connect external services via OAuth
+- **Token Management**: Store and manage access/refresh tokens
+- **Content Sync**: Synchronize content from external services
+- **Service Management**: Connect, disconnect, and manage integrations
+
+## Key Models
+
+### Integration
+
+**Table**: `integrations`
+
+**Purpose**: User integrations with external services
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `type` (CharField) - Integration type (POCKET, NOTION, EVERNOTE)
+- `access_token` (TextField) - OAuth access token (encrypted in production)
+- `refresh_token` (TextField) - OAuth refresh token (nullable)
+- `token_expiry` (DateTime) - Token expiration
+- `username` (CharField) - Service username
+- `connected_at` (DateTime) - Connection timestamp
+- `last_used_at` (DateTime) - Last usage timestamp
+- `is_active` (Boolean) - Active status
+- `metadata` (JSONField) - Additional metadata
+
+**Relationships**:
+- Many-to-One: `user` → User
+
+### AuthState
+
+**Table**: `auth_states`
+
+**Purpose**: OAuth state tracking
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User
+- `state` (CharField) - OAuth state (unique)
+- `service_type` (CharField) - Service type
+- `request_token` (CharField) - OAuth request token
+- `created_at` (DateTime) - Creation timestamp
+- `expires_at` (DateTime) - Expiration timestamp
+- `is_used` (Boolean) - Used status
+
+**Relationships**:
+- Many-to-One: `user` → User
+
+## Services
+
+### IntegrationService
+
+**Purpose**: Integration management
+
+**Key Methods**:
+- `get_integrations(user_id)` - Get all user integrations
+- `connect_integration(user_id, integration_type, access_token, refresh_token)` - Connect integration
+- `disconnect_integration(user_id, integration_type)` - Disconnect integration
+- `sync_integration(integration_id)` - Sync content from integration
+
+## API Endpoints
+
+### Get Integrations
+
+#### GET `/api/integration/`
+Get all active integrations for the authenticated user.
+
+**Response** (200):
+```json
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "type": "POCKET",
+    "connectedAt": "2025-12-24T10:00:00Z",
+    "lastUsedAt": "2025-12-24T10:00:00Z"
+  }
+]
+```
+
+### Connect Integration
+
+#### POST `/api/integration/connect/`
+Connect an external service integration using OAuth tokens.
+
+**Request Body**:
+```json
+{
+  "type": "POCKET",
+  "accessToken": "abc123...",
+  "refreshToken": "xyz789..."
+}
+```
+
+**Response** (200):
+```json
+{
+  "id": "123e4567-e89b-12d3-a456-426614174000",
+  "type": "POCKET",
+  "connectedAt": "2025-12-24T10:00:00Z"
+}
+```
+
+### Disconnect Integration
+
+#### POST `/api/integration/disconnect/`
+Disconnect an external service integration.
+
+**Request Body**:
+```json
+{
+  "type": "POCKET"
+}
+```
+
+**Response** (200):
+```json
+{
+  "success": true
+}
+```
+
+## Supported Integrations
+
+### Pocket
+
+**Purpose**: Save articles and content to Pocket
+
+**OAuth Flow**:
+1. Generate OAuth request token
+2. Redirect user to Pocket authorization
+3. User authorizes
+4. Exchange request token for access token
+5. Store access token
+
+**Features**:
+- Save articles to Pocket
+- Sync Pocket reading list
+- Tag management
+
+### Notion
+
+**Purpose**: Save content to Notion pages/databases
+
+**OAuth Flow**:
+1. Generate OAuth authorization URL
+2. Redirect user to Notion authorization
+3. User authorizes
+4. Exchange code for access token
+5. Store access token
+
+**Features**:
+- Create Notion pages
+- Add to Notion databases
+- Sync content
+
+### Evernote
+
+**Purpose**: Save content to Evernote notes
+
+**OAuth Flow**:
+1. Generate OAuth authorization URL
+2. Redirect user to Evernote authorization
+3. User authorizes
+4. Exchange code for access token
+5. Store access token
+
+**Features**:
+- Create Evernote notes
+- Add to notebooks
+- Sync content
+
+## OAuth Flow
+
+### 1. Initiate OAuth
+
+```python
+# Generate OAuth state
+state = generate_oauth_state()
+auth_state = AuthState.objects.create(
+    user=user,
+    service_type='POCKET',
+    state=state,
+    expires_at=timezone.now() + timedelta(minutes=10)
+)
+
+# Redirect user to OAuth provider
+oauth_url = f"https://provider.com/oauth/authorize?state={state}"
+```
+
+### 2. OAuth Callback
+
+```python
+# Receive callback with code/state
+code = request.GET.get('code')
+state = request.GET.get('state')
+
+# Verify state
+auth_state = AuthState.objects.get(state=state, is_used=False)
+if auth_state.expires_at < timezone.now():
+    raise ValueError('OAuth state expired')
+
+# Exchange code for tokens
+tokens = exchange_code_for_tokens(code)
+
+# Create integration
+Integration.objects.create(
+    user=auth_state.user,
+    type=auth_state.service_type,
+    access_token=tokens['access_token'],
+    refresh_token=tokens.get('refresh_token')
+)
+
+# Mark state as used
+auth_state.is_used = True
+auth_state.save()
+```
+
+## Usage Examples
+
+### Get Integrations
+
+```python
+import requests
+
+headers = {'Authorization': 'Bearer <access_token>'}
+
+response = requests.get(
+    'https://api.inbo.me/api/integration/',
+    headers=headers
+)
+
+integrations = response.json()
+```
+
+### Connect Pocket Integration
+
+```python
+response = requests.post(
+    'https://api.inbo.me/api/integration/connect/',
+    headers=headers,
+    json={
+        'type': 'POCKET',
+        'accessToken': 'pocket-access-token',
+        'refreshToken': 'pocket-refresh-token'
+    }
+)
+```
+
+### Disconnect Integration
+
+```python
+response = requests.post(
+    'https://api.inbo.me/api/integration/disconnect/',
+    headers=headers,
+    json={'type': 'POCKET'}
+)
+```
+
+## Security
+
+### Token Storage
+- Access tokens stored encrypted in production
+- Refresh tokens stored encrypted
+- Tokens never exposed in API responses
+- Secure token rotation
+
+### OAuth State
+- Unique state per OAuth request
+- 10-minute expiration
+- One-time use only
+- Prevents CSRF attacks
+
+## Integration
+
+### With User App
+- Links integrations to user account
+- Tracks integration status
+- Provides integration data in user profile
+
+### With Email App
+- Can save emails to integrations
+- Syncs email content to external services
+
+## Related Documentation
+
+- [User App](/docs/backend/apps/user-app)
+- [Email App](/docs/backend/apps/email-app)
+- [API Reference](/openapi/api-reference)

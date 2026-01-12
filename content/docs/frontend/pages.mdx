@@ -1,0 +1,309 @@
+---
+title: Pages & Routes
+description: Next.js pages and routing structure
+---
+
+# Pages & Routes
+
+The INBO Frontend uses Next.js 16 App Router for routing with organized route groups and dynamic routes.
+
+## Route Structure
+
+### App Router Organization
+
+```
+app/
+├── layout.tsx                    # Root layout
+├── page.tsx                      # Landing page
+├── ClientProviders.tsx           # Client-side providers
+├── (dashboard)/                  # Dashboard route group
+│   ├── layout.tsx               # Dashboard layout
+│   ├── page.tsx                 # Dashboard home
+│   ├── inbox/
+│   │   └── page.tsx             # Inbox page
+│   ├── discover/
+│   │   ├── page.tsx             # Discover page
+│   │   └── [category]/
+│   │       └── page.tsx         # Category page
+│   ├── subscriptions/
+│   │   └── page.tsx             # Subscriptions page
+│   ├── analytics/
+│   │   └── page.tsx             # Analytics page
+│   ├── profile/
+│   │   └── page.tsx             # Profile page
+│   └── delete/
+│       └── page.tsx             # Account deletion
+├── auth/                         # Authentication routes
+│   ├── login/
+│   │   └── page.tsx             # Login page
+│   ├── register/
+│   │   └── page.tsx             # Registration page
+│   ├── verify/
+│   │   └── page.tsx             # OTP verification
+│   └── verify-magic-link/
+│       └── page.tsx             # Magic link verification
+└── reading/                      # Reading routes
+    └── [slug]/
+        └── page.tsx             # Reading page
+```
+
+## Public Routes
+
+### Landing Page
+**Route**: `/`  
+**File**: `app/page.tsx`
+
+Landing page with:
+- Hero section
+- Features overview
+- Call-to-action
+- Navigation
+
+### Login Page
+**Route**: `/auth/login`  
+**File**: `app/auth/login/page.tsx`
+
+Login page with:
+- Email/password login
+- OTP authentication
+- Magic link authentication
+- Google OAuth
+- Apple Sign-In
+- Registration link
+
+### Registration Page
+**Route**: `/auth/register`  
+**File**: `app/auth/register/page.tsx`
+
+Multi-step registration:
+1. Email verification
+2. OTP verification
+3. Username selection
+4. Category selection
+5. Reminder settings
+6. Notification preferences
+7. Onboarding questions
+
+### OTP Verification
+**Route**: `/auth/verify`  
+**File**: `app/auth/verify/page.tsx`
+
+OTP verification page:
+- OTP input
+- Resend OTP
+- Verification flow
+
+### Magic Link Verification
+**Route**: `/auth/verify-magic-link`  
+**File**: `app/auth/verify-magic-link/page.tsx`
+
+Magic link verification:
+- Token validation
+- Automatic login
+- Error handling
+
+## Protected Routes (Dashboard)
+
+### Dashboard Layout
+**Route Group**: `(dashboard)`  
+**File**: `app/(dashboard)/layout.tsx`
+
+Dashboard layout with:
+- **Desktop**: Navbar, Sidebar, Main content
+- **Mobile**: Bottom navigation, Mobile header
+- Responsive design
+- Help widget
+
+### Dashboard Home
+**Route**: `/dashboard`  
+**File**: `app/(dashboard)/page.tsx`
+
+Dashboard home page:
+- Overview statistics
+- Recent activity
+- Quick actions
+- Personalized content
+
+### Inbox Page
+**Route**: `/dashboard/inbox`  
+**File**: `app/(dashboard)/inbox/page.tsx`
+
+Email inbox page:
+- Email list
+- Filters (All, Unread, Favorites, Read Later)
+- Search
+- Email actions
+- Pagination
+
+**Mobile Component**: `MobileInboxSection.tsx`
+
+### Discover Page
+**Route**: `/dashboard/discover`  
+**File**: `app/(dashboard)/discover/page.tsx`
+
+Newsletter discovery page:
+- Trending newsletters
+- Category browsing
+- Search
+- Newsletter cards
+- Subscribe functionality
+
+**Mobile Component**: `MobileDiscoverSection.tsx`
+
+### Category Page
+**Route**: `/dashboard/discover/[category]`  
+**File**: `app/(dashboard)/discover/[category]/page.tsx`
+
+Category-specific newsletters:
+- Category filter
+- Newsletter list
+- Category metadata
+
+### Subscriptions Page
+**Route**: `/dashboard/subscriptions`  
+**File**: `app/(dashboard)/subscriptions/page.tsx`
+
+User subscriptions:
+- Subscribed newsletters
+- Subscription management
+- Unsubscribe actions
+- Newsletter details
+
+**Mobile Component**: `MobileSubscriptionSection.tsx`
+
+### Analytics Page
+**Route**: `/dashboard/analytics`  
+**File**: `app/(dashboard)/analytics/page.tsx`
+
+Reading analytics:
+- Daily streak
+- Reading statistics
+- Time spent
+- Words read
+- Achievements
+- Reading insights
+
+**Mobile Component**: `MobileAnalyticsSection.tsx`
+
+### Profile Page
+**Route**: `/dashboard/profile`  
+**File**: `app/(dashboard)/profile/page.tsx`
+
+User profile page:
+- Profile information
+- Account settings
+- Privacy & security
+- Help center
+- Feedback
+- Bug reports
+- Contact support
+- Account deactivation
+- About
+
+**Mobile Component**: `MobileProfileSection.tsx`
+
+### Account Deletion Page
+**Route**: `/dashboard/delete`  
+**File**: `app/(dashboard)/delete/page.tsx`
+
+Account deletion:
+- Deletion form
+- Confirmation
+- Data retention information
+- GDPR compliance
+
+**Mobile Component**: `MobileDeleteSection.tsx`
+
+## Reading Routes
+
+### Reading Page
+**Route**: `/reading/[slug]`  
+**File**: `app/reading/[slug]/page.tsx`
+
+Reading interface:
+- Email/article content
+- Reading progress
+- Text-to-speech
+- Reading settings
+- Navigation
+- Actions (favorite, highlight, etc.)
+
+**Mobile Component**: `MobileReadingSection.tsx`
+
+## Route Protection
+
+### Protected Routes
+Dashboard routes are protected:
+- Authentication required
+- Redirect to login if not authenticated
+- Session validation
+
+### Route Groups
+- `(dashboard)` - Protected dashboard routes
+- `(auth)` - Authentication routes (public)
+
+## Responsive Design
+
+### Mobile Layout
+- Bottom navigation
+- Mobile headers
+- Mobile-optimized components
+- Touch-friendly interactions
+
+### Desktop Layout
+- Sidebar navigation
+- Top navbar
+- Full-width content
+- Desktop-optimized components
+
+## Dynamic Routes
+
+### Category Route
+**Pattern**: `/dashboard/discover/[category]`
+
+Dynamic category page:
+```typescript
+export default function CategoryPage({ params }: { params: { category: string } }) {
+  const { category } = params;
+  // Render category-specific content
+}
+```
+
+### Reading Route
+**Pattern**: `/reading/[slug]`
+
+Dynamic reading page:
+```typescript
+export default function ReadingPage({ params }: { params: { slug: string } }) {
+  const { slug } = params;
+  // Render reading content
+}
+```
+
+## Layout Hierarchy
+
+```
+Root Layout (app/layout.tsx)
+  └── ClientProviders
+      └── AuthProvider
+          └── Dashboard Layout (app/(dashboard)/layout.tsx)
+              └── Dashboard Pages
+```
+
+## Navigation
+
+### Desktop Navigation
+- **Navbar**: Top navigation bar
+- **Sidebar**: Left sidebar with menu
+- **Footer**: Page footer
+
+### Mobile Navigation
+- **BottomNav**: Fixed bottom navigation
+- **MobileHeader**: Top header with menu
+- **Floating Nav**: Floating action buttons
+
+## Related Documentation
+
+- [Components](/docs/frontend/components) - Page components
+- [API Integration](/docs/frontend/api-integration) - Data fetching
+- [Architecture](/docs/frontend/architecture) - Routing architecture

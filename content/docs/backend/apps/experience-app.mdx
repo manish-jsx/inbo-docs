@@ -1,0 +1,365 @@
+---
+title: Experience App
+description: Experience orchestration system for personalized UI
+---
+
+# Experience App (`experience_app`)
+
+The Experience App provides a complete UI personalization engine that personalizes every page, section, and component based on real-time user behavior.
+
+## Overview
+
+The Experience App implements a **Forever-Live Recommendation System** with **Experience Orchestration** that:
+- **Personalizes Every Page**: Home, search, category, reading, profile pages
+- **Dynamic Section Ranking**: Scores and ranks sections based on user affinity, context, freshness, and popularity
+- **Fatigue Control**: Prevents over-showing same sections
+- **Diversity Control**: Ensures variety in displayed content
+- **Real-Time State**: Uses Redis for real-time user state tracking
+- **Interaction Tracking**: Tracks all user interactions for continuous improvement
+
+## Architecture
+
+See [Experience Orchestration Architecture](/docs/backend/architecture/experience-orchestration) for detailed architecture diagrams.
+
+## Key Models
+
+### ExperienceRender
+
+**Table**: `experience_app_experiencerender`
+
+**Purpose**: Tracks when experiences are rendered
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User
+- `session_id` (CharField) - Session identifier
+- `page` (CharField) - Page name (home, search, category, reading, profile)
+- `intent` (CharField) - User intent (discovery, task_driven, consumption)
+- `sections` (JSONField) - Rendered sections with items
+- `context` (JSONField) - Context data (device, time_of_day, location)
+- `created_at` (DateTime) - Render timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+- One-to-Many: `interactions` → ExperienceInteraction
+
+### ExperienceInteraction
+
+**Table**: `experience_app_experienceinteraction`
+
+**Purpose**: Tracks user interactions with experience elements
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User
+- `render` (ForeignKey) - Experience render
+- `interaction_type` (CharField) - Interaction type (click, view, scroll)
+- `section_type` (CharField) - Section type
+- `item_id` (UUID) - Item ID
+- `position` (Integer) - Position in list
+- `dwell_time` (Integer) - Dwell time (seconds)
+- `scroll_depth` (Integer) - Scroll depth (percentage)
+- `created_at` (DateTime) - Interaction timestamp
+
+**Relationships**:
+- Many-to-One: `user` → User
+- Many-to-One: `render` → ExperienceRender
+
+### ExperienceSectionMetrics
+
+**Table**: `experience_app_experiencesectionmetrics`
+
+**Purpose**: Aggregated section performance metrics
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `section_type` (CharField) - Section type
+- `page` (CharField) - Page name
+- `period_start` (DateTime) - Period start
+- `period_end` (DateTime) - Period end
+- `total_renders` (Integer) - Total renders
+- `total_interactions` (Integer) - Total interactions
+- `click_through_rate` (Float) - CTR (clicks / views)
+- `avg_dwell_time` (Float) - Average dwell time
+- `engagement_score` (Float) - Engagement score
+- `updated_at` (DateTime) - Last update
+
+## Services
+
+### ExperienceOrchestrator
+
+**Purpose**: Main service that generates personalized experiences
+
+**Key Methods**:
+- `get_page_experience(user_id, page, context)` - Generate personalized experience for page
+- `infer_intent(page, context)` - Infer user intent
+- `generate_candidate_sections(intent, context)` - Generate section candidates
+- `populate_section_items(section, user_id)` - Populate items for section
+
+### ExperienceScorer
+
+**Purpose**: Scores sections and components
+
+**Key Methods**:
+- `score_section(section, user_id, context)` - Score a section
+- `score_item(item, user_id, context)` - Score an item
+- `apply_fatigue_penalty(score, user_id, section_type, item_id)` - Apply fatigue penalty
+- `apply_diversity_penalty(score, section_type, existing_sections)` - Apply diversity penalty
+
+### RedisStateManager
+
+**Purpose**: Manages real-time state in Redis
+
+**Key Methods**:
+- `get_user_state(user_id)` - Get user state
+- `update_user_recent_items(user_id, item_id)` - Update recent items
+- `increment_item_views(item_id)` - Increment view count
+- `increment_item_clicks(item_id)` - Increment click count
+- `track_fatigue(user_id, section_type, item_id)` - Track fatigue
+- `get_fatigue_count(user_id, section_type, item_id)` - Get fatigue count
+
+## API Endpoints
+
+### Get Page Experience
+
+#### GET `/api/experience/page/<page>/`
+Get personalized experience for a page.
+
+**Pages**: `home`, `search`, `category`, `reading`, `profile`
+
+**Query Parameters**:
+- `max_sections` (optional): Maximum sections (default: 10)
+- `session_id` (optional): Session identifier
+- `time_of_day` (optional): morning, afternoon, evening
+- `device` (optional): mobile, desktop, tablet
+- `location` (optional): Location identifier
+
+**Response** (200):
+```json
+{
+  "page": "home",
+  "intent": "discovery",
+  "sections": [
+    {
+      "type": "continue_reading",
+      "priority": 0.92,
+      "title": "Continue Reading",
+      "items": [
+        {
+          "id": "...",
+          "title": "...",
+          "description": "...",
+          "type": "newsletter",
+          "metadata": {...}
+        }
+      ],
+      "metadata": {...}
+    },
+    {
+      "type": "personalized_picks",
+      "priority": 0.85,
+      "title": "For You",
+      "items": [...]
+    }
+  ],
+  "metadata": {
+    "user_id": "...",
+    "session_id": "...",
+    "generated_at": "2025-01-24T10:00:00Z"
+  }
+}
+```
+
+### Track Interaction
+
+#### POST `/api/experience/interactions/`
+Track user interaction with experience elements.
+
+**Request Body**:
+```json
+{
+  "interactionType": "click",
+  "sectionType": "continue_reading",
+  "itemId": "...",
+  "position": 2,
+  "dwellTime": 5.2,
+  "scrollDepth": 50,
+  "sessionId": "...",
+  "metadata": {...}
+}
+```
+
+**Response** (201):
+```json
+{
+  "id": "...",
+  "interactionType": "click",
+  "createdAt": "2025-01-24T10:00:00Z"
+}
+```
+
+## Section Types
+
+- **`continue_reading`** - Items user was reading
+- **`personalized_picks`** - Personalized recommendations
+- **`because_you_viewed`** - Similar to viewed items
+- **`trending`** - Trending items
+- **`recently_added`** - Recently added newsletters
+- **`categories`** - Category list
+- **`trending_near_you`** - Location-based trending
+- **`similar_to`** - Similar items in category
+
+## Intent Inference
+
+Different pages have different user intents:
+
+| Page | Intent | Focus |
+|------|--------|-------|
+| home | discovery | Exploration, variety |
+| search | task_driven | Relevance, speed |
+| category | exploration | Similar items |
+| reading | consumption | Continue reading, related |
+| profile | retention | Personalized picks |
+
+## Section Scoring
+
+Every section gets a score based on:
+
+- **User Affinity (35%)**: How much user likes this section type
+- **Context Relevance (25%)**: How relevant to current page/intent
+- **Freshness (15%)**: How new/recent the content is
+- **Popularity (15%)**: How popular the section is
+- **Business Weight (10%)**: Business-defined priority
+
+**Final Score**:
+```
+Final Score = 
+    (User Affinity × 0.35) +
+    (Context Relevance × 0.25) +
+    (Freshness × 0.15) +
+    (Popularity × 0.15) +
+    (Business Weight × 0.10)
+    
+- Fatigue Penalty (up to 30%)
+```
+
+## Fatigue Control
+
+Prevents over-showing same sections:
+
+- Track how many times user saw section
+- Apply penalty: `score *= (1.0 - fatigue_penalty)`
+- Max penalty: 30%
+- Reset after TTL expires (1 hour)
+
+## Redis State Schema
+
+### Key Patterns
+
+```
+# User State
+exp:user:{user_id}:recent_items          # List of recent item IDs
+exp:user:{user_id}:sections:{type}        # Section interactions
+exp:user:{user_id}:interests              # Category interest scores
+
+# Fatigue Control
+exp:fatigue:{user_id}:{section_type}:{item_id}  # Fatigue count
+
+# Item Counters
+exp:item:{item_id}:views                  # View count
+exp:item:{item_id}:clicks                 # Click count
+
+# Session State
+exp:session:{session_id}:state            # Session state
+exp:session:{session_id}:behavior         # Session behaviors
+```
+
+### TTLs
+
+- User state: 24 hours
+- Session state: 1 hour
+- Item counters: 24 hours
+- Fatigue: 1 hour
+- Recent items: 24 hours
+
+## Background Tasks (Celery)
+
+### Periodic Tasks
+
+1. **`experience.aggregate_section_metrics`** (every 6 hours)
+   - Aggregates section performance metrics
+   - Calculates CTR, engagement scores
+
+2. **`experience.sync_redis_to_db`** (every hour)
+   - Syncs Redis counters to database
+   - Ensures data persistence
+
+3. **`experience.cleanup_old_renders`** (daily at 4 AM)
+   - Cleans up old experience data
+   - Keeps last 30 days
+
+## Integration
+
+### With Recommendation Engine
+- Uses `CandidateGeneratorService` for personalized picks
+- Uses `UserFeature` and `ItemFeature` for scoring
+- Integrates with event tracking
+
+### With Search App
+- Can use OpenSearch for candidate retrieval
+- Search queries tracked for trends
+- Results can be re-ranked by experience scorer
+
+## Usage Examples
+
+### Get Home Page Experience
+
+```python
+import requests
+
+headers = {'Authorization': 'Bearer <access_token>'}
+
+response = requests.get(
+    'https://api.inbo.me/api/experience/page/home/',
+    headers=headers,
+    params={
+        'session_id': 'abc123',
+        'max_sections': 10,
+        'device': 'mobile'
+    }
+)
+
+experience = response.json()
+sections = experience['sections']
+```
+
+### Track Interaction
+
+```python
+response = requests.post(
+    'https://api.inbo.me/api/experience/interactions/',
+    headers=headers,
+    json={
+        'interactionType': 'click',
+        'sectionType': 'continue_reading',
+        'itemId': '...',
+        'position': 2,
+        'dwellTime': 5.2,
+        'sessionId': 'abc123'
+    }
+)
+```
+
+## Performance Targets
+
+- Experience API: < 200ms (p95)
+- Redis operations: < 10ms
+- Database queries: < 50ms
+- Celery tasks: < 5s
+
+## Related Documentation
+
+- [Experience Orchestration Architecture](/docs/backend/architecture/experience-orchestration)
+- [Recommendation Engine](/docs/backend/apps/recommendation-engine)
+- [Search App](/docs/backend/apps/search-app)
+- [API Reference](/openapi/api-reference)

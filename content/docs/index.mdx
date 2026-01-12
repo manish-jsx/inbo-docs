@@ -1,0 +1,146 @@
+---
+title: INBO Documentation
+description: Complete documentation for INBO Backend and Frontend
+---
+
+# Welcome to INBO Documentation
+
+Welcome to the comprehensive documentation for the INBO platform. This documentation covers both the backend (Django) and frontend (Next.js) implementations, providing detailed information about architecture, APIs, services, and more.
+
+## What is INBO?
+
+INBO is a comprehensive newsletter management platform that helps users:
+- **Manage Newsletters**: Organize and track newsletter subscriptions
+- **Email Management**: Handle emails with custom @inbo.me addresses
+- **Reading Analytics**: Track reading habits, streaks, and statistics
+- **Personalized Discovery**: AI-powered recommendations and search
+- **Experience Personalization**: Dynamic UI orchestration based on user behavior
+
+## Documentation Sections
+
+<Cards>
+  <Card 
+    title="Backend Documentation" 
+    href="/docs/backend/introduction"
+    description="Complete Django backend documentation including 20 apps, services, APIs, and architecture"
+  />
+  <Card 
+    title="Frontend Documentation" 
+    href="/docs/frontend/introduction"
+    description="Next.js frontend documentation including components, pages, API integration, hooks, and deployment"
+  />
+  <Card 
+    title="API Reference" 
+    href="/openapi/api-reference"
+    description="Interactive API documentation with Swagger UI and ReDoc"
+  />
+  <Card 
+    title="Backend Architecture" 
+    href="/docs/backend/architecture/overview"
+    description="Django backend system architecture, data flow, and component interactions"
+  />
+  <Card 
+    title="Frontend Architecture" 
+    href="/docs/frontend/architecture"
+    description="Next.js frontend architecture, design patterns, and state management"
+  />
+  <Card 
+    title="Components" 
+    href="/docs/frontend/components"
+    description="React component library with 50+ components organized by feature"
+  />
+</Cards>
+
+## Quick Start
+
+### Backend (Django)
+
+- **[Introduction](/docs/backend/introduction)** - Get started with the backend
+- **[Installation](/docs/backend/introduction)** - Setup and installation guide
+- **[Architecture](/docs/backend/architecture/overview)** - System architecture
+- **[Apps Overview](/docs/backend/apps/overview)** - All Django apps
+
+### Frontend (Next.js)
+
+- **[Introduction](/docs/frontend/introduction)** - Get started with the frontend
+- **[Installation](/docs/frontend/introduction)** - Setup and installation guide
+- **[Components](/docs/frontend/components)** - React components
+- **[API Integration](/docs/frontend/api-integration)** - Backend API integration
+
+### API Documentation
+
+- **[OpenAPI Reference](/openapi/api-reference)** - Complete API reference
+- **[Swagger UI](https://inbo-django-api.azurewebsites.net/api/docs/)** - Interactive API explorer
+- **[ReDoc](https://inbo-django-api.azurewebsites.net/api/redoc/)** - Alternative API documentation
+
+## Key Features
+
+### 🔐 Authentication & Security
+- OTP-based email verification
+- JWT token authentication
+- Device and session tracking
+- Secure data encryption
+
+### 📧 Email Management
+- Custom @inbo.me email addresses
+- Email folders and organization
+- AI-powered email summaries
+- Email highlights and annotations
+
+### 📰 Newsletter Management
+- Comprehensive newsletter directory
+- Newsletter subscriptions
+- Reading progress tracking
+- Newsletter post management
+
+### 🔍 Search & Discovery
+- Full-text search with Elasticsearch
+- Redis-cached search results
+- Global and user-scoped search
+- Fast search performance
+
+### 🎯 Personalization
+- Recommendation engine with hybrid scoring
+- Experience orchestration for personalized UI
+- User behavior tracking
+- Fatigue and diversity control
+
+### 📊 Analytics
+- Reading statistics and streaks
+- Time spent tracking
+- Word count and reading progress
+- Dashboard insights
+
+## Technology Stack
+
+### Backend
+- **Framework**: Django 5.0.6
+- **Database**: PostgreSQL
+- **Cache**: Redis
+- **Search**: Bonsai.io (Elasticsearch)
+- **Storage**: Azure Blob Storage
+- **Tasks**: Celery
+- **API**: Django REST Framework
+
+### Frontend
+- **Framework**: Next.js 16
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **UI Components**: Custom components
+- **Documentation**: Fumadocs
+
+## Getting Help
+
+- **API Issues**: Check [API Reference](/openapi/api-reference)
+- **Backend Questions**: See [Backend Documentation](/docs/backend/introduction)
+- **Frontend Questions**: See [Frontend Documentation](/docs/frontend/introduction)
+- **Architecture Questions**: See [Architecture Overview](/docs/backend/architecture/overview)
+
+## Contributing
+
+This documentation is maintained alongside the codebase. For updates or improvements, please refer to the project repository.
+
+---
+
+**Last Updated**: January 2025  
+**Version**: 1.0.0

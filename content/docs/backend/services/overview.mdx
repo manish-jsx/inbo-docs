@@ -1,0 +1,424 @@
+---
+title: Services Overview
+description: Overview of service layer in the INBO Backend
+---
+
+# Services Layer Overview
+
+The INBO Backend follows a service-oriented architecture where business logic is encapsulated in service classes. This document provides an overview of all services across the application.
+
+## Service Architecture
+
+Services are organized by domain and follow a consistent pattern:
+
+```python
+class DomainService:
+    """Service for domain operations"""
+    
+    def __init__(self):
+        # Initialize dependencies
+        
+    def operation(self, params):
+        # Business logic
+        # Database operations
+        # External API calls
+        return result
+```
+
+## Core Services
+
+### UserService (`user_app/services.py`)
+
+**Purpose**: User management and profile operations
+
+**Key Methods**:
+- `check_user_verification(user_id)` - Check verification status
+- `get_user_profile(user_id)` - Get user profile
+- `get_complete_user_data(user_id)` - Get comprehensive user data
+- `get_inbox_accounts(user_id)` - Get inbox email accounts
+- `get_dashboard_data(user_id)` - Get dashboard statistics
+- `create_inbox(user_id, username)` - Create @inbo.me inbox
+- `check_inbox_availability(username)` - Check username availability
+- `get_folders(user_id)` - Get user folders
+- `create_folder(user_id, folder_name)` - Create folder
+- `delete_folder(user_id, folder_name)` - Delete folder
+
+**Dependencies**:
+- `AzureBlobService` - File storage
+- `core.models` - User, Email, Folder models
+
+### EmailService (`email_app/services.py`)
+
+**Purpose**: Email operations and management
+
+**Key Methods**:
+- `get_emails(user_id, filters)` - Get emails with filters
+- `get_email(email_id)` - Get email details
+- `update_email_progress(email_id, progress)` - Update reading progress
+- `toggle_favorite(email_id)` - Toggle favorite status
+- `toggle_read_later(email_id)` - Toggle read later
+- `move_to_trash(email_id)` - Move to trash
+- `restore_email(email_id)` - Restore from trash
+- `delete_permanently(email_id)` - Permanently delete
+- `add_highlight(email_id, text, note)` - Add highlight
+- `update_highlight_note(highlight_id, note)` - Update highlight
+- `delete_highlight(highlight_id)` - Delete highlight
+- `move_to_folder(email_id, folder_name)` - Move to folder
+- `search_emails(user_id, query, filters)` - Search emails
+
+**Dependencies**:
+- `core.models` - Email, Folder models
+- `ai_app.services.AIService` - Email summarization
+
+### AuthService (`auth_app/services.py`)
+
+**Purpose**: Authentication and authorization
+
+**Key Methods**:
+- `send_otp(email)` - Send OTP email
+- `verify_otp(email, otp)` - Verify OTP
+- `generate_tokens(user)` - Generate JWT tokens
+- `refresh_token(refresh_token)` - Refresh access token
+- `register_device(user, device_info)` - Register device
+- `get_user_devices(user_id)` - Get user devices
+
+**Dependencies**:
+- `core.models` - User, UserDevice models
+- `nodemailer_app.services.NodemailerService` - Email sending
+
+### ReadingService (`reading_app/services.py`)
+
+**Purpose**: Reading statistics
+
+**Key Methods**:
+- `get_reading_stats(user_id, date_range)` - Get reading statistics
+- `update_reading_progress(email_id, progress)` - Update progress
+- `get_time_range_stats(user_id, start_date, end_date)` - Get time range stats
+- `get_global_stats(user_id)` - Get global statistics
+
+**Dependencies**:
+- `core.models` - ReadingStats, Email models
+
+### StreakService (`reading_app/services.py`)
+
+**Purpose**: Reading streak management
+
+**Key Methods**:
+- `get_streak_count(user_id)` - Get current streak
+- `update_streak(user_id, date)` - Update streak
+- `reset_streak(user_id)` - Reset streak
+- `get_longest_streak(user_id)` - Get longest streak
+
+**Dependencies**:
+- `core.models` - User, ReadingStats models
+
+## Content & Discovery Services
+
+### DirectoryService (`directory_app/services.py`)
+
+**Purpose**: Newsletter directory operations
+
+**Key Methods**:
+- `search_providers(query, filters)` - Search providers
+- `get_provider(provider_id)` - Get provider details
+- `get_categories()` - Get all categories
+- `get_category_providers(category_id)` - Get providers in category
+- `search_categories(query)` - Search categories
+
+**Dependencies**:
+- `directory_app.models` - NewsletterProvider, NewsletterCategory models
+- `search_app` - Search integration
+
+### NewsletterProfileService (`newsletter_profile_app/services.py`)
+
+**Purpose**: Newsletter profile management
+
+**Key Methods**:
+- `get_or_create_profile(user_id)` - Get or create profile
+- `update_profile(user_id, data)` - Update profile
+- `get_preferences(user_id)` - Get user preferences
+- `subscribe_to_provider(user_id, provider_id)` - Subscribe to provider
+- `unsubscribe_from_provider(user_id, provider_id)` - Unsubscribe
+
+**Dependencies**:
+- `newsletter_profile_app.models` - NewsletterProfile, NewsletterPreference models
+
+### NewsletterPreferenceService (`newsletter_profile_app/services.py`)
+
+**Purpose**: Newsletter preference management
+
+**Key Methods**:
+- `get_preferences(user_id)` - Get all preferences
+- `get_preference(user_id, provider_id)` - Get specific preference
+- `create_preference(user_id, provider_id, data)` - Create preference
+- `update_preference(preference_id, data)` - Update preference
+- `delete_preference(preference_id)` - Delete preference
+
+**Dependencies**:
+- `newsletter_profile_app.models` - NewsletterPreference model
+
+### NewsletterPostService (`newsletter_profile_app/services.py`)
+
+**Purpose**: Newsletter post management
+
+**Key Methods**:
+- `get_posts(user_id, filters)` - Get posts
+- `get_post(post_id)` - Get post details
+- `mark_as_read(post_id)` - Mark as read
+- `update_reading_progress(post_id, progress)` - Update progress
+- `fetch_posts_for_preference(preference_id)` - Fetch new posts
+
+**Dependencies**:
+- `newsletter_profile_app.models` - NewsletterPost model
+- `NewsletterFetcherService` - Post fetching
+
+### NewsletterFetcherService (`newsletter_profile_app/newsletter_fetcher.py`)
+
+**Purpose**: Fetch newsletter posts from external sources
+
+**Key Methods**:
+- `fetch_posts(preference)` - Fetch posts for preference
+- `parse_rss_feed(url)` - Parse RSS feed
+- `extract_post_content(url)` - Extract post content
+
+**Dependencies**:
+- External RSS feeds
+- Web scraping libraries
+
+## Search Services
+
+Search functionality is primarily handled through the search app's views and utilities:
+
+- `cached_search()` - Cached search with Redis
+- `multi_match_search()` - Multi-field search
+- `filtered_search()` - Filtered search
+- `invalidate_search_cache()` - Cache invalidation
+
+**Dependencies**:
+- `search_app.opensearch_client` - OpenSearch client
+- `search_app.cached_search` - Caching utilities
+- Redis for caching
+
+## Recommendation Services
+
+### EventIngestionService (`recommendation_engine/services.py`)
+
+**Purpose**: User event tracking
+
+**Key Methods**:
+- `track_event(user_id, event_type, item_id, metadata)` - Track event
+- `get_user_events(user_id, filters)` - Get user events
+- `aggregate_events(user_id, time_range)` - Aggregate events
+
+**Dependencies**:
+- `recommendation_engine.models` - UserEvent model
+- Redis for real-time state
+
+### FeatureStoreService (`recommendation_engine/services.py`)
+
+**Purpose**: Feature management
+
+**Key Methods**:
+- `get_or_create_user_features(user_id)` - Get/create user features
+- `update_user_features(user_id, data)` - Update features
+- `get_or_create_item_features(item_id, item_type)` - Get/create item features
+- `update_item_features(item_id, data)` - Update features
+- `aggregate_features(user_id)` - Aggregate features from events
+
+**Dependencies**:
+- `recommendation_engine.models` - UserFeature, ItemFeature models
+- Redis for caching
+
+### CandidateGeneratorService (`recommendation_engine/services.py`)
+
+**Purpose**: Recommendation generation
+
+**Key Methods**:
+- `generate_candidates_for_user(user_id, limit)` - Generate personalized candidates
+- `generate_candidates_by_popularity(limit)` - Generate popular candidates
+- `generate_candidates_by_category(category_id, limit)` - Generate category candidates
+- `score_candidates(user_id, candidates)` - Score candidates
+- `apply_diversity_filter(candidates, limit)` - Apply diversity
+
+**Dependencies**:
+- `FeatureStoreService` - User and item features
+- `search_app` - Search for candidates
+- `recommendation_engine.models` - Recommendation model
+
+## Integration Services
+
+### GmailService (`gmail_app/services.py`)
+
+**Purpose**: Gmail integration
+
+**Key Methods**:
+- `connect_account(user_id, auth_code)` - Connect Gmail account
+- `sync_emails(gmail_account_id)` - Sync emails
+- `disconnect_account(gmail_account_id)` - Disconnect account
+- `get_allowed_senders(gmail_account_id)` - Get allowed senders
+- `add_allowed_sender(gmail_account_id, email)` - Add allowed sender
+
+**Dependencies**:
+- Google API Client
+- `gmail_app.models` - GmailAccount model
+
+### IntegrationService (`integration_app/services.py`)
+
+**Purpose**: Third-party integrations
+
+**Key Methods**:
+- `connect_integration(user_id, provider, auth_code)` - Connect integration
+- `sync_integration(integration_id)` - Sync content
+- `disconnect_integration(integration_id)` - Disconnect
+- `get_integrations(user_id)` - Get user integrations
+
+**Dependencies**:
+- Pocket API
+- Notion API
+- Evernote API
+- `integration_app.models` - Integration model
+
+### SubscriptionService (`subscription_app/services.py`)
+
+**Purpose**: Subscription management
+
+**Key Methods**:
+- `get_plans()` - Get all plans
+- `get_plan(plan_id)` - Get plan details
+- `create_subscription(user_id, plan_id)` - Create subscription
+- `update_subscription(subscription_id, data)` - Update subscription
+- `cancel_subscription(subscription_id)` - Cancel subscription
+- `process_payment(subscription_id, payment_method)` - Process payment
+
+**Dependencies**:
+- Stripe API
+- `subscription_app.models` - Subscription, PaymentTransaction models
+
+## AI Services
+
+### AIService (`ai_app/services.py`)
+
+**Purpose**: AI-powered features
+
+**Key Methods**:
+- `summarize_email(email_id)` - Summarize email
+- `summarize_text(text)` - Summarize text
+- `generate_highlights(email_id)` - Generate highlights
+- `generate_content(prompt)` - Generate content
+
+**Dependencies**:
+- OpenAI API
+- `core.models` - Email model
+
+## Utility Services
+
+### AzureBlobService (`azure_app/services.py`)
+
+**Purpose**: Azure Blob Storage operations
+
+**Key Methods**:
+- `upload_file(container, filename, file_data)` - Upload file
+- `download_file(container, filename)` - Download file
+- `delete_file(container, filename)` - Delete file
+- `get_file_url(container, filename)` - Get file URL
+
+**Dependencies**:
+- Azure Storage SDK
+
+### NodemailerService (`nodemailer_app/services.py`)
+
+**Purpose**: Email sending
+
+**Key Methods**:
+- `send_email(to, subject, body)` - Send email
+- `send_otp_email(to, otp)` - Send OTP email
+- `send_welcome_email(to, name)` - Send welcome email
+- `send_notification_email(to, notification)` - Send notification
+
+**Dependencies**:
+- SMTP server
+- Email templates
+
+### CryptoService (`crypto_app/services.py`)
+
+**Purpose**: Cryptographic operations
+
+**Key Methods**:
+- `encrypt(data)` - Encrypt data
+- `decrypt(encrypted_data)` - Decrypt data
+- `hash_password(password)` - Hash password
+- `verify_password(password, hash)` - Verify password
+
+**Dependencies**:
+- Cryptography library
+
+### WebhookService (`webhook_app/services.py`)
+
+**Purpose**: Webhook processing
+
+**Key Methods**:
+- `process_stripe_webhook(payload, signature)` - Process Stripe webhook
+- `process_webhook(provider, payload, signature)` - Process generic webhook
+- `verify_signature(payload, signature, secret)` - Verify signature
+
+**Dependencies**:
+- Stripe SDK
+- `subscription_app.services.SubscriptionService`
+
+### AccountDeletionService (`account_deletion_app/services.py`)
+
+**Purpose**: Account deletion
+
+**Key Methods**:
+- `request_deletion(user_id, reason)` - Request deletion
+- `process_deletion(user_id)` - Process deletion
+- `anonymize_user_data(user_id)` - Anonymize data
+- `delete_user_data(user_id)` - Delete data
+
+**Dependencies**:
+- All app models for data deletion
+
+### WaitlistService (`waitlist_app/services.py`)
+
+**Purpose**: Waitlist management
+
+**Key Methods**:
+- `join_waitlist(email, metadata)` - Join waitlist
+- `check_status(email)` - Check waitlist status
+- `get_waitlist_entries(filters)` - Get entries
+
+**Dependencies**:
+- `waitlist_app.models` - Waitlist model
+
+## Service Patterns
+
+### Error Handling
+All services follow consistent error handling:
+```python
+try:
+    # Operation
+    return result
+except SpecificException as e:
+    logger.error(f'Error in service: {str(e)}')
+    raise ServiceException('User-friendly message')
+```
+
+### Caching
+Services use Redis for caching:
+- User features: 15 minutes TTL
+- Item features: 30 minutes TTL
+- Search results: 5 minutes TTL
+- Dashboard data: 5 minutes TTL
+
+### Logging
+All services use structured logging:
+```python
+logger.info(f'Operation started: {params}')
+logger.error(f'Operation failed: {error}')
+```
+
+## Next Steps
+
+- [User Service Details](/docs/backend/services/user) - Detailed user service documentation
+- [Email Service Details](/docs/backend/services/email) - Email service documentation
+- [Recommendation Services](/docs/backend/services/recommendation) - Recommendation services documentation

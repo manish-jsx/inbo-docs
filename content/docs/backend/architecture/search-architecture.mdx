@@ -1,0 +1,325 @@
+---
+title: Search Architecture
+description: Complete search engine architecture using Bonsai.io (Elasticsearch) with Redis caching
+---
+
+# Search Engine Architecture - Bonsai.io
+
+## Overview
+
+This document describes the search engine architecture using Bonsai.io (Elasticsearch-as-a-Service) for indexing and searching newsletters, emails, and related content.
+
+## Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "📊 Data Sources"
+        direction LR
+        NPModel[NewsletterProvider]
+        EmailModel[Email]
+        NewsModel[Newsletter]
+        PostModel[NewsletterPost]
+        InboxModel[InboxEmail]
+    end
+
+    subgraph "🔄 Indexing Pipeline"
+        Signals[Django Signals<br/>Auto-Index on Save/Delete]
+        IndexClient[OpenSearch Client]
+    end
+
+    subgraph "🌳 Bonsai.io Elasticsearch Cluster"
+        direction TB
+        Bonsai[Bonsai.io Cluster]
+        
+        subgraph "Global Search Index"
+            NPIndex[newsletter_providers<br/>📰 Global Newsletter Directory]
+        end
+        
+        subgraph "User-Level Search Indexes"
+            EmailIndex[emails<br/>📧 User Email Search]
+            NewsIndex[newsletters<br/>📬 User Subscriptions]
+            PostIndex[newsletter_posts<br/>📄 Newsletter Posts]
+            InboxIndex[inbox_emails<br/>📥 Inbox Emails]
+        end
+    end
+
+    subgraph "🔍 Search Request Flow"
+        direction TB
+        API[Search API Endpoints]
+        CacheMgr[Redis Cache Manager]
+        CacheDecision{Cache<br/>Hit?}
+    end
+
+    subgraph "💾 Redis Cache Layer"
+        Redis[(Redis Cache<br/>Search Results<br/>TTL: 5 minutes<br/>60-80% hit rate)]
+    end
+
+    subgraph "📤 Search Results"
+        direction LR
+        GlobalResults[Global Search<br/>Results]
+        UserResults[User-Level<br/>Search Results]
+    end
+
+    %% ========== INDEXING FLOW ==========
+    NPModel --> Signals
+    EmailModel --> Signals
+    NewsModel --> Signals
+    PostModel --> Signals
+    InboxModel --> Signals
+    
+    Signals -->|Index Documents| IndexClient
+    IndexClient -->|HTTP/HTTPS| Bonsai
+    
+    Bonsai --> NPIndex
+    Bonsai --> EmailIndex
+    Bonsai --> NewsIndex
+    Bonsai --> PostIndex
+    Bonsai --> InboxIndex
+
+    %% Cache Invalidation
+    Signals -.->|Invalidate Cache<br/>on Model Update| Redis
+
+    %% ========== SEARCH FLOW ==========
+    API -->|1. Query Request| CacheMgr
+    CacheMgr -->|2. Check Cache Key| CacheDecision
+    
+    %% Cache Hit Path (Fast Path - 60-80% of queries)
+    CacheDecision -->|✅ Cache Hit<br/>~10ms response| Redis
+    Redis -->|3a. Return Cached Results| API
+    
+    %% Cache Miss Path (Slow Path - 20-40% of queries)
+    CacheDecision -->|❌ Cache Miss| IndexClient
+    IndexClient -->|4. Search Query| Bonsai
+    
+    %% Query Execution
+    Bonsai -->|Query| NPIndex
+    Bonsai -->|Query| EmailIndex
+    Bonsai -->|Query| NewsIndex
+    Bonsai -->|Query| PostIndex
+    Bonsai -->|Query| InboxIndex
+    
+    %% Results Return
+    NPIndex -->|Results| IndexClient
+    EmailIndex -->|Results| IndexClient
+    NewsIndex -->|Results| IndexClient
+    PostIndex -->|Results| IndexClient
+    InboxIndex -->|Results| IndexClient
+    
+    %% Cache and Format Results
+    IndexClient -->|5. Store in Cache| Redis
+    IndexClient -->|6. Format Results| GlobalResults
+    IndexClient -->|6. Format Results| UserResults
+    
+    GlobalResults -->|Response| API
+    UserResults -->|Response| API
+```
+
+## Index Details
+
+### 1. Newsletter Providers Index (Global Search)
+- **Index Name**: `newsletter_providers`
+- **Search Level**: Global (all users)
+- **Indexed Fields**:
+  - `name` (text with keyword and suggest fields)
+  - `description` (text)
+  - `author` (text with keyword)
+  - `target_audience` (text)
+  - `value_proposition` (text)
+  - `language` (keyword)
+  - `content_frequency` (keyword)
+  - `location` (text with keyword)
+  - `domain` (keyword)
+  - `url` (keyword)
+  - `categories` (multi-keyword)
+  - `tags` (multi-keyword)
+  - `tones` (multi-keyword)
+  - `audience_levels` (multi-keyword)
+  - `content_intents` (multi-keyword)
+  - `content_formats` (multi-keyword)
+
+### 2. Emails Index (User-Level Search)
+- **Index Name**: `emails`
+- **Search Level**: User-scoped (filtered by `user_id`)
+- **Indexed Fields**:
+  - `sender` (text with keyword)
+  - `subject` (text with keyword and suggest)
+  - `content_preview` (text)
+  - `recipient_id` (keyword)
+  - `recipient_email` (keyword)
+  - `user_id` (keyword) - **Used for filtering**
+  - `folder_id` (keyword)
+  - `date_received` (date)
+  - `is_read`, `is_favorite`, `is_read_later` (boolean)
+  - `reading_progress`, `time_spent`, `words_count` (integer)
+  - `categories` (multi-keyword)
+
+### 3. Newsletters Index (User-Level Search)
+- **Index Name**: `newsletters`
+- **Search Level**: User-scoped (filtered by `user_id`)
+- **Indexed Fields**:
+  - `name` (text with keyword and suggest)
+  - `sender_email` (text with keyword)
+  - `recipient_id` (keyword)
+  - `recipient_email` (keyword)
+  - `user_id` (keyword) - **Used for filtering**
+  - `first_received`, `last_received` (date)
+  - `email_count` (integer)
+  - `is_accepted` (boolean)
+
+### 4. Newsletter Posts Index (User-Level Search)
+- **Index Name**: `newsletter_posts`
+- **Search Level**: User-scoped (filtered by `user_id`)
+- **Indexed Fields**:
+  - `title` (text with keyword and suggest)
+  - `description` (text)
+  - `content_preview` (text)
+  - `author` (text with keyword)
+  - `newsletter_url`, `post_url`, `post_slug` (keyword)
+  - `preference_id` (keyword)
+  - `user_id` (keyword) - **Used for filtering**
+  - `published_at`, `last_modified`, `fetched_at` (date)
+  - `is_read` (boolean)
+  - `reading_progress`, `word_count`, `read_time_minutes` (integer)
+
+### 5. Inbox Emails Index (User-Level Search)
+- **Index Name**: `inbox_emails`
+- **Search Level**: User-scoped (filtered by `user_id`)
+- **Indexed Fields**:
+  - `email` (text with keyword)
+  - `user_id` (keyword) - **Used for filtering**
+  - `created_at` (date)
+
+## Redis Caching Architecture
+
+### Cache Flow
+
+1. **Query Received**: Search API receives query request
+2. **Cache Key Generation**: MD5 hash generated from search query body
+   - Format: `search:{index_name}:{md5_hash}`
+   - Example: `search:newsletter_providers:a1b2c3d4e5f6...`
+3. **Cache Lookup**: Check Redis for existing cached results
+4. **Cache Hit Path** (60-80% of queries):
+   - Results returned immediately from Redis
+   - Bonsai.io query is bypassed
+   - Response time: < 10ms
+5. **Cache Miss Path** (20-40% of queries):
+   - Query sent to Bonsai.io
+   - Results retrieved from Elasticsearch
+   - Results stored in Redis with TTL
+   - Results returned to client
+   - Response time: 50-200ms (depending on query complexity)
+
+### Cache Configuration
+
+- **Default TTL**: 300 seconds (5 minutes)
+- **Configurable**: Can be adjusted per query via `cache_timeout` parameter
+- **Storage**: Redis using Django's cache framework
+- **Key Strategy**: MD5 hash ensures identical queries use same cache key
+- **Cost Savings**: 60-80% reduction in Bonsai.io API calls
+
+### Cache Functions
+
+Located in `search_app/cached_search.py`:
+
+- **`cached_search(query, index, body, cache_timeout=300)`**: Core caching function
+- **`multi_match_search(query, index, fields, boost=None, cache_timeout=300)`**: Cached multi-field search
+- **`filtered_search(query, index, filters, cache_timeout=300)`**: Cached filtered search
+- **`invalidate_search_cache(index=None, pattern='search:*')`**: Manual cache invalidation
+
+### Cache Invalidation Strategy
+
+- **Automatic**: Triggered by Django signals when models are saved/deleted
+- **Pattern-based**: Can invalidate by index or pattern
+- **Selective**: Only invalidates relevant cache keys (by index)
+- **Non-blocking**: Cache invalidation doesn't block model operations
+
+## Search Flow
+
+1. **Request**: User makes search request via API endpoint
+2. **Authentication**: Request is authenticated (user-level searches require auth)
+3. **Query Building**: Search query is built with appropriate filters
+4. **Cache Check**: Redis cache is checked for existing results using MD5 hash of query body
+   - **Cache Hit**: Results are returned immediately from Redis (bypasses Bonsai.io)
+   - **Cache Miss**: Proceeds to query Bonsai.io
+5. **Bonsai.io Query**: Query is sent to Bonsai.io Elasticsearch cluster (only on cache miss)
+6. **Results**: Results are returned with relevance scores
+7. **Cache Storage**: Results are stored in Redis with 5-minute TTL (default)
+8. **Response**: Results are serialized and returned to client
+
+### Redis Caching Benefits
+
+- **Cost Reduction**: Reduces Bonsai.io API calls by 60-80%
+- **Performance**: Faster response times for repeated queries
+- **Cache Key**: Generated from MD5 hash of search query body
+- **TTL**: Default 5 minutes (configurable per query)
+- **Cache Invalidation**: Automatic invalidation on model updates via signals
+
+## User-Level vs Global Search
+
+### Global Search
+- **Newsletter Providers**: Available to all users
+- No user filtering required
+- Public directory of newsletters
+
+### User-Level Search
+- **Emails**: Filtered by `user_id`
+- **Newsletters**: Filtered by `user_id`
+- **Newsletter Posts**: Filtered by `user_id`
+- **Inbox Emails**: Filtered by `user_id`
+- Requires authentication
+- Each user only sees their own content
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Bonsai.io Configuration (Recommended - includes credentials in URL)
+BONSAI_URL=https://username:password@your-cluster.bonsaisearch.net
+
+# Or use separate credentials (Alternative)
+OPENSEARCH_HOST=https://your-cluster.bonsaisearch.net
+OPENSEARCH_USER=your_username
+OPENSEARCH_PASSWORD=your_password
+
+# Legacy support (also works)
+ELASTICSEARCH_HOST=https://username:password@your-cluster.bonsaisearch.net
+
+# Elasticsearch DSL Configuration
+ELASTICSEARCH_AUTOSYNC=True
+ELASTICSEARCH_AUTO_REFRESH=True
+
+# Redis Configuration (for search result caching)
+REDIS_URL=redis://localhost:6379/0
+CACHE_BACKEND=django_redis.cache.RedisCache
+CACHE_LOCATION=redis://localhost:6379/1
+```
+
+## Fallback Behavior
+
+### Bonsai.io Unavailable
+If Bonsai.io is unavailable:
+- Application continues to work
+- Search falls back to PostgreSQL database queries
+- Uses `ILIKE` for case-insensitive text matching
+- All endpoints remain functional
+- Errors are logged but don't crash the application
+- Connection errors are handled gracefully without blocking application startup
+
+### Redis Cache Unavailable
+If Redis cache is unavailable:
+- Search queries proceed directly to Bonsai.io
+- No caching occurs (increased API costs)
+- Application continues to function normally
+- Cache errors are logged but don't break search functionality
+
+### Cache Invalidation
+- **Automatic**: Cache is invalidated when models are updated/deleted via Django signals
+- **Manual**: Use `invalidate_search_cache()` function to clear specific indexes
+- **Pattern**: Cache keys can be cleared by pattern (e.g., `search:newsletter_providers:*`)
+
+## Related Documentation
+
+- [Search App Documentation](/docs/backend/apps/search-app)
+- [Architecture Overview](/docs/backend/architecture/overview)
+- [API Reference](/openapi/api-reference)

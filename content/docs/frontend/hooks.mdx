@@ -1,0 +1,382 @@
+---
+title: Custom Hooks
+description: React hooks for data fetching and state management
+---
+
+# Custom Hooks
+
+The INBO Frontend provides custom React hooks for data fetching, state management, and common functionality.
+
+## Hook Organization
+
+### Directory Structure
+
+```
+hooks/
+├── useUser.ts          # User data hook
+├── useEmail.ts         # Email operations hook
+├── useNewsletter.ts    # Newsletter hook
+├── useTTS.ts           # Text-to-speech hook
+├── useMediaQuery.ts    # Responsive design hook
+└── index.ts            # Hook exports
+```
+
+## User Hooks
+
+### useUser
+**File**: `hooks/useUser.ts`
+
+User profile management hook.
+
+**Returns**:
+```typescript
+{
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+  updateUser: (data: Partial<User>) => Promise<User>;
+}
+```
+
+**Usage**:
+```typescript
+import { useUser } from '@/hooks/useUser';
+
+function ProfilePage() {
+  const { user, loading, error, updateUser } = useUser();
+
+  if (loading) return <Loading />;
+  if (error) return <Error message={error} />;
+
+  const handleUpdate = async () => {
+    await updateUser({ name: 'New Name' });
+  };
+
+  return <div>{user?.name}</div>;
+}
+```
+
+**Features**:
+- Automatic data fetching on mount
+- Loading and error states
+- Update functionality
+- Refetch capability
+
+## Email Hooks
+
+### useEmailList
+**File**: `hooks/useEmail.ts`
+
+Email list management hook.
+
+**Parameters**:
+```typescript
+{
+  page?: number;
+  page_size?: number;
+  is_read?: boolean;
+  filter?: string;
+}
+```
+
+**Returns**:
+```typescript
+{
+  emails: Email[];
+  loading: boolean;
+  error: string | null;
+  hasMore: boolean;
+  fetchEmails: (type: 'inbox' | 'favorites' | 'read-later', reset?: boolean) => Promise<void>;
+  loadMore: () => void;
+  refetch: () => Promise<void>;
+}
+```
+
+**Usage**:
+```typescript
+import { useEmailList } from '@/hooks/useEmail';
+
+function InboxPage() {
+  const { emails, loading, hasMore, loadMore, refetch } = useEmailList({
+    page: 1,
+    page_size: 20,
+    is_read: false
+  });
+
+  return (
+    <div>
+      {emails.map(email => (
+        <EmailCard key={email.id} email={email} />
+      ))}
+      {hasMore && (
+        <button onClick={loadMore}>Load More</button>
+      )}
+    </div>
+  );
+}
+```
+
+**Features**:
+- Automatic fetching on mount
+- Pagination support
+- Infinite scroll ready
+- Filter support
+- Reset capability
+
+### useEmailActions
+**File**: `hooks/useEmail.ts`
+
+Email action operations hook.
+
+**Returns**:
+```typescript
+{
+  loading: boolean;
+  error: string | null;
+  toggleFavorite: (emailId: string) => Promise<void>;
+  markAsRead: (emailId: string, isRead: boolean) => Promise<void>;
+  moveToTrash: (emailId: string) => Promise<void>;
+  restoreEmail: (emailId: string) => Promise<void>;
+}
+```
+
+**Usage**:
+```typescript
+import { useEmailActions } from '@/hooks/useEmail';
+
+function EmailCard({ email }) {
+  const { toggleFavorite, markAsRead } = useEmailActions();
+
+  const handleFavorite = async () => {
+    await toggleFavorite(email.id);
+  };
+
+  return (
+    <div>
+      <button onClick={handleFavorite}>
+        {email.is_favorite ? 'Unfavorite' : 'Favorite'}
+      </button>
+    </div>
+  );
+}
+```
+
+## Newsletter Hooks
+
+### useNewsletter
+**File**: `hooks/useNewsletter.ts`
+
+Newsletter operations hook.
+
+**Returns**:
+```typescript
+{
+  newsletters: Newsletter[];
+  loading: boolean;
+  error: string | null;
+  fetchTrending: () => Promise<void>;
+  searchNewsletters: (query: string) => Promise<void>;
+  subscribe: (newsletterId: string) => Promise<void>;
+  unsubscribe: (newsletterId: string) => Promise<void>;
+}
+```
+
+**Usage**:
+```typescript
+import { useNewsletter } from '@/hooks/useNewsletter';
+
+function DiscoverPage() {
+  const { newsletters, loading, fetchTrending, subscribe } = useNewsletter();
+
+  useEffect(() => {
+    fetchTrending();
+  }, []);
+
+  return (
+    <div>
+      {newsletters.map(newsletter => (
+        <NewsletterCard
+          key={newsletter.id}
+          newsletter={newsletter}
+          onSubscribe={() => subscribe(newsletter.id)}
+        />
+      ))}
+    </div>
+  );
+}
+```
+
+## Text-to-Speech Hook
+
+### useTTS
+**File**: `hooks/useTTS.ts`
+
+Text-to-speech functionality hook.
+
+**Returns**:
+```typescript
+{
+  isPlaying: boolean;
+  currentText: string;
+  play: (text: string) => Promise<void>;
+  pause: () => void;
+  stop: () => void;
+  setSpeed: (speed: number) => void;
+}
+```
+
+**Usage**:
+```typescript
+import { useTTS } from '@/hooks/useTTS';
+
+function ReadingPage({ content }) {
+  const { isPlaying, play, pause, stop } = useTTS();
+
+  return (
+    <div>
+      <button onClick={() => play(content)}>
+        {isPlaying ? 'Pause' : 'Play'}
+      </button>
+      <button onClick={stop}>Stop</button>
+    </div>
+  );
+}
+```
+
+## Responsive Design Hook
+
+### useMediaQuery
+**File**: `hooks/useMediaQuery.ts`
+
+Media query hook for responsive design.
+
+**Usage**:
+```typescript
+import useMedia from 'use-media';
+
+function ResponsiveComponent() {
+  const isMobile = useMedia({ maxWidth: 768 });
+  const isTablet = useMedia({ minWidth: 769, maxWidth: 1024 });
+
+  if (isMobile) {
+    return <MobileLayout />;
+  }
+
+  return <DesktopLayout />;
+}
+```
+
+## Hook Patterns
+
+### Data Fetching Pattern
+
+```typescript
+export function useData() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await service.getData();
+      setData(result);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData };
+}
+```
+
+### Action Pattern
+
+```typescript
+export function useAction() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const performAction = useCallback(async (params) => {
+    try {
+      setLoading(true);
+      setError(null);
+      return await service.action(params);
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { loading, error, performAction };
+}
+```
+
+## Hook Exports
+
+**File**: `hooks/index.ts`
+
+```typescript
+export { useUser } from './useUser';
+export { useEmailList, useEmailActions } from './useEmail';
+export { useNewsletter } from './useNewsletter';
+export { useTTS } from './useTTS';
+```
+
+## Best Practices
+
+### 1. Error Handling
+Always handle errors in hooks:
+
+```typescript
+const { emails, error } = useEmailList();
+
+if (error) {
+  return <Error message={error} />;
+}
+```
+
+### 2. Loading States
+Show loading indicators:
+
+```typescript
+const { loading, emails } = useEmailList();
+
+if (loading) {
+  return <Loading />;
+}
+```
+
+### 3. Dependency Arrays
+Use proper dependency arrays:
+
+```typescript
+useEffect(() => {
+  fetchData();
+}, [dependency]); // Include all dependencies
+```
+
+### 4. Memoization
+Use `useCallback` for functions:
+
+```typescript
+const handleAction = useCallback(async () => {
+  await performAction();
+}, [performAction]);
+```
+
+## Related Documentation
+
+- [Services](/docs/frontend/services) - Service layer
+- [API Integration](/docs/frontend/api-integration) - API client
+- [Components](/docs/frontend/components) - Component usage

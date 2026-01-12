@@ -1,0 +1,205 @@
+---
+title: Documentation Examples
+description: Examples of documentation features and components
+---
+
+# Documentation Examples
+
+This page demonstrates various documentation features and components available in the INBO documentation.
+
+## Code Examples
+
+### Python (Backend)
+
+```python
+from core.models import User, Email
+from email_app.services import EmailService
+
+# Get user's inbox emails
+email_service = EmailService()
+emails = email_service.get_inbox_emails(
+    user_id=user.id,
+    page=1,
+    limit=20,
+    is_read=None,
+    filter_type='latest'
+)
+```
+
+### TypeScript (Frontend)
+
+```typescript
+import { useQuery } from '@tanstack/react-query';
+
+// Fetch user profile
+const { data: profile } = useQuery({
+  queryKey: ['user', 'profile'],
+  queryFn: async () => {
+    const response = await fetch('/api/user/profile/', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.json();
+  }
+});
+```
+
+### Bash (Configuration)
+
+```bash
+# Environment variables
+export DATABASE_URL=postgresql://user:pass@localhost/inbo
+export REDIS_URL=redis://localhost:6379/0
+export BONSAI_URL=https://username:password@cluster.bonsaisearch.net
+
+# Run migrations
+python manage.py migrate
+
+# Start development server
+python manage.py runserver
+```
+
+## API Request Examples
+
+### Authentication Flow
+
+```http
+# 1. Send OTP
+POST /api/auth/otp/send/
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+
+# 2. Verify OTP
+POST /api/auth/otp/verify/
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "otp": "1234",
+  "deviceInfo": {
+    "deviceName": "iPhone 14",
+    "userAgent": "Mozilla/5.0...",
+    "ip": "192.168.1.1"
+  }
+}
+```
+
+### Get User Dashboard
+
+```http
+GET /api/user/dashboard-data/
+Authorization: Bearer <access_token>
+```
+
+## Architecture Diagrams
+
+The documentation includes Mermaid diagrams for architecture visualization:
+
+- [Search Architecture](/docs/backend/architecture/search-architecture) - Bonsai.io and Redis caching
+- [Experience Orchestration](/docs/backend/architecture/experience-orchestration) - Personalization system
+- [Recommendation Engine](/docs/backend/architecture/recommendation-engine) - Hybrid scoring algorithm
+
+## Navigation Cards
+
+<Cards>
+  <Card 
+    title="Backend Apps" 
+    href="/docs/backend/apps/overview"
+    description="Explore all Django apps and their functionality"
+  />
+  <Card 
+    title="API Reference" 
+    href="/openapi/api-reference"
+    description="Complete API documentation with examples"
+  />
+  <Card 
+    title="Architecture" 
+    href="/docs/backend/architecture/overview"
+    description="System architecture and design patterns"
+  />
+  <Card 
+    title="Services" 
+    href="/docs/backend/services/overview"
+    description="Service layer documentation"
+  />
+</Cards>
+
+## Key Concepts
+
+### Service Layer Pattern
+
+The backend follows a service-oriented architecture:
+
+```python
+# Service encapsulates business logic
+class EmailService:
+    def get_inbox_emails(self, user_id, page, limit):
+        # Business logic here
+        emails = Email.objects.filter(user_id=user_id)
+        return paginate(emails, page, limit)
+
+# View uses service
+class EmailViewSet(viewsets.ViewSet):
+    def list(self, request):
+        service = EmailService()
+        return Response(service.get_inbox_emails(...))
+```
+
+### Hybrid Scoring Algorithm
+
+The recommendation engine uses a hybrid scoring approach:
+
+```
+score = α * personal_score + β * popularity_score + γ * freshness_score
+
+Where:
+- α = 0.4 (Personalization weight)
+- β = 0.4 (Popularity weight)
+- γ = 0.2 (Freshness weight)
+```
+
+## Best Practices
+
+### Error Handling
+
+```python
+try:
+    result = service.operation(params)
+    return Response(result, status=200)
+except ValueError as e:
+    return Response(
+        {'error': str(e)},
+        status=400
+    )
+except Exception as e:
+    logger.error(f'Operation failed: {e}')
+    return Response(
+        {'error': 'Internal server error'},
+        status=500
+    )
+```
+
+### Caching Strategy
+
+```python
+# Redis caching for search results
+from search_app.cached_search import cached_search
+
+results = cached_search(
+    query=query,
+    index='newsletter_providers',
+    body=search_body,
+    cache_timeout=300  # 5 minutes
+)
+```
+
+## Related Documentation
+
+- [Backend Introduction](/docs/backend/introduction)
+- [Frontend Introduction](/docs/frontend/introduction)
+- [API Reference](/openapi/api-reference)
+- [Architecture Overview](/docs/backend/architecture/overview)

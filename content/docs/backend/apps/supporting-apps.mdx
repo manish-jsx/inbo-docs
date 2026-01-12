@@ -1,0 +1,347 @@
+---
+title: Supporting Apps
+description: Utility and administrative apps (Azure, Crypto, Nodemailer, Tasks, Webhook, Waitlist, Account Deletion, Newsletter Profile)
+---
+
+# Supporting Apps
+
+This document covers utility and administrative apps that support the main application functionality.
+
+## Azure App (`azure_app`)
+
+### Purpose
+Azure Blob Storage integration for file storage.
+
+### Services
+
+#### AzureBlobService
+**Purpose**: Azure Blob Storage operations
+
+**Key Methods**:
+- `get_email_buffer(blob_name)` - Get email content as buffer
+- `delete_blob(blob_name)` - Delete blob from storage
+- `upload_blob(blob_name, data)` - Upload blob to storage
+
+**Configuration**:
+```bash
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;...
+AZURE_STORAGE_CONTAINER_NAME=emails
+```
+
+**Usage**:
+- Used by `email_app` for storing email content
+- Stores email attachments
+- Manages file storage in Azure
+
+## Crypto App (`crypto_app`)
+
+### Purpose
+Cryptographic utilities for security operations.
+
+### Services
+
+#### CryptoService
+**Purpose**: Cryptographic operations
+
+**Key Methods**:
+- `generate_device_id(device_info)` - Generate unique device ID
+- `hash_refresh_token(refresh_token)` - Hash refresh token for storage
+- `verify_refresh_token(refresh_token)` - Verify refresh token hash
+
+**Usage**:
+- Used by `auth_app` for device ID generation
+- Used for secure token hashing
+- Device tracking and session management
+
+## Nodemailer App (`nodemailer_app`)
+
+### Purpose
+Email sending service using Django's email backend.
+
+### Services
+
+#### NodemailerService
+**Purpose**: Email sending operations
+
+**Key Methods**:
+- `send_otp(email, otp)` - Send OTP email
+- `send_verification_email(email, token, expiry_date)` - Send verification email
+- `send_welcome_email(email, name)` - Send welcome email
+- `send_notification_email(email, notification)` - Send notification
+
+**Configuration**:
+```bash
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+DEFAULT_FROM_EMAIL=noreply@inbo.me
+```
+
+**Usage**:
+- Used by `auth_app` for OTP emails
+- Used for verification emails
+- Used for notification emails
+
+## Tasks App (`tasks_app`)
+
+### Purpose
+Background task management with Celery.
+
+### Features
+- Celery task definitions
+- Scheduled tasks (Celery Beat)
+- Task monitoring
+- Async task processing
+
+### Common Tasks
+- Email processing
+- Newsletter fetching
+- Feature aggregation
+- Recommendation computation
+- Analytics aggregation
+- Cache invalidation
+
+**Configuration**:
+```bash
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
+```
+
+## Webhook App (`webhook_app`)
+
+### Purpose
+Webhook handlers for external services.
+
+### Services
+
+#### WebhookService
+**Purpose**: Webhook processing
+
+**Key Methods**:
+- `process_stripe_webhook(payload, signature)` - Process Stripe webhook
+- `verify_signature(payload, signature, secret)` - Verify webhook signature
+
+### API Endpoints
+
+#### POST `/api/webhook/stripe/`
+Process Stripe webhook events.
+
+**Webhook Events**:
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.payment_succeeded`
+- `invoice.payment_failed`
+
+**Usage**:
+- Processes Stripe subscription events
+- Updates subscription status
+- Handles payment events
+
+## Waitlist App (`waitlist_app`)
+
+### Purpose
+Waitlist management for user registration.
+
+### Models
+
+#### Waitlist
+**Table**: `waitlists`
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `email` (EmailField) - Email address
+- `metadata` (JSONField) - Additional metadata
+- `created_at` (DateTime) - Creation timestamp
+
+### Services
+
+#### WaitlistService
+**Purpose**: Waitlist operations
+
+**Key Methods**:
+- `add_to_waitlist(email, metadata)` - Add email to waitlist
+- `check_status(email)` - Check waitlist status
+
+### API Endpoints
+
+#### POST `/api/waitlist/`
+Add email to waitlist.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com",
+  "metadata": {...}
+}
+```
+
+#### GET `/api/waitlist/<username>/available/`
+Check if username is available.
+
+## Account Deletion App (`account_deletion_app`)
+
+### Purpose
+GDPR-compliant account deletion process.
+
+### Models
+
+#### AccountDeletionRequest
+**Table**: `account_deletion_requests`
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - User
+- `reason` (TextField) - Deletion reason
+- `status` (CharField) - Status (PENDING, PROCESSING, COMPLETED, CANCELLED)
+- `requested_at` (DateTime) - Request timestamp
+- `processed_at` (DateTime) - Processing timestamp
+
+### Services
+
+#### AccountDeletionService
+**Purpose**: Account deletion operations
+
+**Key Methods**:
+- `request_deletion(user_id, reason)` - Request account deletion
+- `process_deletion(user_id)` - Process deletion
+- `anonymize_user_data(user_id)` - Anonymize user data
+- `delete_user_data(user_id)` - Delete user data
+
+### API Endpoints
+
+#### POST `/api/account-deletion/request/`
+Request account deletion.
+
+**Request Body**:
+```json
+{
+  "reason": "No longer using the service"
+}
+```
+
+#### GET `/api/account-deletion/status/<deletionId>/`
+Get deletion request status.
+
+#### POST `/api/account-deletion/cancel/<deletionId>/`
+Cancel deletion request.
+
+#### GET `/api/account-deletion/stats/`
+Get deletion statistics (admin only).
+
+## Newsletter Profile App (`newsletter_profile_app`)
+
+### Purpose
+Manages user preferences for newsletters and newsletter posts.
+
+### Models
+
+#### NewsletterProfile
+**Table**: `newsletter_profile_app_newsletterprofile`
+
+**Purpose**: User newsletter profile
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `user` (ForeignKey) - Owner user
+- `created_at` (DateTime) - Creation timestamp
+- `updated_at` (DateTime) - Last update
+
+**Relationships**:
+- One-to-Many: `preferences` → NewsletterPreference
+
+#### NewsletterPreference
+**Table**: `newsletter_profile_app_newsletterpreference`
+
+**Purpose**: User preferences for specific newsletters
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `profile` (ForeignKey) - Newsletter profile
+- `provider` (ForeignKey) - Newsletter provider
+- `is_subscribed` (Boolean) - Subscription status
+- `notification_enabled` (Boolean) - Notification preference
+
+**Relationships**:
+- Many-to-One: `profile` → NewsletterProfile
+- Many-to-One: `provider` → NewsletterProvider
+- One-to-Many: `posts` → NewsletterPost
+
+#### NewsletterPost
+**Table**: `newsletter_profile_app_newsletterpost`
+
+**Purpose**: Individual newsletter posts/articles
+
+**Key Fields**:
+- `id` (UUID) - Primary key
+- `preference` (ForeignKey) - Newsletter preference
+- `title` (CharField) - Post title
+- `description` (TextField) - Description
+- `content` (TextField) - Post content
+- `post_url` (URLField) - Post URL
+- `published_at` (DateTime) - Publication date
+- `is_read` (Boolean) - Read status
+- `reading_progress` (Integer) - Reading progress
+
+**Relationships**:
+- Many-to-One: `preference` → NewsletterPreference
+
+### Services
+
+#### NewsletterProfileService
+**Purpose**: Newsletter profile management
+
+**Key Methods**:
+- `get_or_create_profile(user_id)` - Get or create profile
+- `update_profile(user_id, data)` - Update profile
+
+#### NewsletterPreferenceService
+**Purpose**: Newsletter preference management
+
+**Key Methods**:
+- `get_preferences(user_id)` - Get all preferences
+- `create_preference(user_id, provider_id, data)` - Create preference
+- `update_preference(preference_id, data)` - Update preference
+- `delete_preference(preference_id)` - Delete preference
+
+#### NewsletterPostService
+**Purpose**: Newsletter post management
+
+**Key Methods**:
+- `get_posts(user_id, filters)` - Get posts
+- `get_post(post_id)` - Get post details
+- `mark_as_read(post_id)` - Mark as read
+- `update_reading_progress(post_id, progress)` - Update progress
+
+#### NewsletterFetcherService
+**Purpose**: Fetch newsletter posts from external sources
+
+**Key Methods**:
+- `fetch_posts(preference)` - Fetch posts for preference
+- `parse_rss_feed(url)` - Parse RSS feed
+- `extract_post_content(url)` - Extract post content
+
+### API Endpoints
+
+#### Newsletter Profile
+- `GET /api/newsletter-profile/v1/profiles/` - Get profile
+- `PUT /api/newsletter-profile/v1/profiles/` - Update profile
+
+#### Newsletter Preferences
+- `GET /api/newsletter-profile/v1/preferences/` - Get preferences
+- `POST /api/newsletter-profile/v1/preferences/` - Create preference
+- `PUT /api/newsletter-profile/v1/preferences/<id>/` - Update preference
+- `DELETE /api/newsletter-profile/v1/preferences/<id>/` - Delete preference
+
+#### Newsletter Posts
+- `GET /api/newsletter-profile/v1/posts/` - Get posts
+- `GET /api/newsletter-profile/v1/posts/<id>/` - Get post details
+
+## Related Documentation
+
+- [Core App](/docs/backend/apps/core-app)
+- [User App](/docs/backend/apps/user-app)
+- [Email App](/docs/backend/apps/email-app)
+- [Directory App](/docs/backend/apps/directory-app)
+- [API Reference](/openapi/api-reference)

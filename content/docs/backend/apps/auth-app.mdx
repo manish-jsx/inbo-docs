@@ -1,0 +1,348 @@
+---
+title: Authentication App
+description: OTP-based authentication, JWT tokens, and session management
+---
+
+# Authentication App (`auth_app`)
+
+The Authentication App handles all authentication and authorization functionality for the INBO Backend, including OTP-based email verification, JWT token management, and session handling.
+
+## Overview
+
+The `auth_app` provides secure, passwordless authentication using One-Time Passwords (OTP) sent via email. It generates and validates JWT tokens for API access and manages user sessions and device tracking.
+
+## Key Features
+
+- **OTP-Based Authentication**: Passwordless login via email OTP
+- **JWT Token Management**: Access and refresh token generation
+- **Device Tracking**: Register and track user devices
+- **Session Management**: Track active user sessions
+- **Rate Limiting**: Prevent OTP abuse
+- **Security**: HMAC-SHA256 OTP hashing, constant-time comparison
+
+## Models
+
+### VerificationRequest
+Stores OTP verification requests with expiration.
+
+**Fields**:
+- `email` - Email address
+- `token` - Hashed OTP
+- `type` - Verification type (OTP, etc.)
+- `created_at` - Request timestamp
+- `expires_at` - Expiration timestamp
+
+## Services
+
+### AuthService
+
+Main service for authentication operations.
+
+#### Methods
+
+**`send_otp(email: str) -> dict`**
+- Generates a 4-digit OTP
+- Hashes OTP using HMAC-SHA256
+- Sends OTP email via NodemailerService
+- Stores verification request with 10-minute expiration
+- Returns success status
+
+**`verify_otp(email: str, otp: str, device_info: dict) -> dict`**
+- Validates OTP format and expiration
+- Verifies OTP hash using constant-time comparison
+- Creates or retrieves user
+- Registers device if new
+- Creates user session
+- Generates JWT tokens (access + refresh)
+- Returns tokens and user information
+
+**`refresh_token(refresh_token: str) -> dict`**
+- Validates refresh token
+- Generates new access token
+- Returns new access token and expiration
+
+**`logout(user_id: str, refresh_token: str) -> dict`**
+- Invalidates refresh token
+- Ends user session
+- Returns success status
+
+**`validate_session(user_id: str) -> dict`**
+- Checks if user session is valid
+- Returns session status
+
+## API Endpoints
+
+### POST `/api/auth/send-otp/`
+Send OTP to email address.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "message": "OTP sent to your email"
+}
+```
+
+**Error Responses**:
+- `400` - Invalid email format
+- `500` - Email sending failed
+
+### POST `/api/auth/verify-otp/`
+Verify OTP and get JWT tokens.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com",
+  "otp": "1234",
+  "deviceInfo": {
+    "deviceName": "iPhone 14",
+    "userAgent": "Mozilla/5.0...",
+    "ip": "192.168.1.1"
+  }
+}
+```
+
+**Response** (200):
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresAt": "2024-12-24T16:00:00.000Z",
+  "user": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "isVerified": true,
+    "isInboxCreated": false
+  },
+  "isNewUser": false
+}
+```
+
+**Error Responses**:
+- `400` - Invalid request data
+- `401` - Invalid or expired OTP
+- `500` - Internal server error
+
+### POST `/api/auth/refresh/`
+Refresh access token using refresh token.
+
+**Request Body**:
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response** (200):
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresAt": "2024-12-24T16:00:00.000Z"
+}
+```
+
+**Error Responses**:
+- `400` - Invalid request data
+- `401` - Invalid or expired refresh token
+
+### POST `/api/auth/logout/`
+Logout user and invalidate tokens.
+
+**Request Body**:
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
+}
+```
+
+### POST `/api/auth/validate-session/`
+Validate current user session.
+
+**Response** (200):
+```json
+{
+  "isValid": true,
+  "user": {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "email": "user@example.com"
+  }
+}
+```
+
+### POST `/api/auth/check-email/`
+Check if email exists in system.
+
+**Request Body**:
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response** (200):
+```json
+{
+  "exists": true
+}
+```
+
+## Security Features
+
+### OTP Security
+- **4-digit OTP**: Random number between 1000-9999
+- **HMAC-SHA256 Hashing**: OTPs are hashed before storage
+- **Constant-Time Comparison**: Prevents timing attacks
+- **10-Minute Expiration**: OTPs expire after 10 minutes
+- **Single Use**: OTPs are deleted after verification
+
+### JWT Configuration
+- **Access Token**: Short-lived (default: 1 hour)
+- **Refresh Token**: Long-lived (default: 7 days)
+- **Algorithm**: HS256
+- **Claims**: User ID, email, device ID
+
+### Rate Limiting
+- OTP requests are rate-limited per email
+- Prevents abuse and spam
+- Configurable via settings
+
+## Usage Examples
+
+### Complete Authentication Flow
+
+```python
+# 1. Send OTP
+response = requests.post('https://api.inbo.me/api/auth/send-otp/', {
+    'email': 'user@example.com'
+})
+
+# 2. Verify OTP
+response = requests.post('https://api.inbo.me/api/auth/verify-otp/', {
+    'email': 'user@example.com',
+    'otp': '1234',
+    'deviceInfo': {
+        'deviceName': 'iPhone 14',
+        'userAgent': 'Mozilla/5.0...',
+        'ip': '192.168.1.1'
+    }
+})
+
+tokens = response.json()
+access_token = tokens['accessToken']
+refresh_token = tokens['refreshToken']
+
+# 3. Use access token for API calls
+headers = {
+    'Authorization': f'Bearer {access_token}'
+}
+response = requests.get('https://api.inbo.me/api/user/profile/', headers=headers)
+
+# 4. Refresh token when expired
+response = requests.post('https://api.inbo.me/api/auth/refresh/', {
+    'refreshToken': refresh_token
+})
+new_access_token = response.json()['accessToken']
+```
+
+## Integration
+
+### With User App
+- Creates user on first OTP verification
+- Links devices and sessions to user
+- Updates user verification status
+
+### With Device Tracking
+- Registers device on first login
+- Tracks device information
+- Links sessions to devices
+
+### With Email Service
+- Uses NodemailerService to send OTP emails
+- Handles email delivery failures gracefully
+
+## Error Handling
+
+All endpoints return consistent error responses:
+
+```json
+{
+  "statusCode": 400,
+  "message": "Error message",
+  "error": "ErrorType"
+}
+```
+
+Common error types:
+- `BadRequest` - Invalid input
+- `Unauthorized` - Authentication failed
+- `NotFound` - Resource not found
+- `InternalServerError` - Server error
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# JWT Configuration
+JWT_SECRET=your-jwt-secret-key
+JWT_ACCESS_TOKEN_LIFETIME=3600  # 1 hour
+JWT_REFRESH_TOKEN_LIFETIME=604800  # 7 days
+
+# OTP Configuration
+OTP_SECRET=your-otp-secret-key
+OTP_EXPIRATION_MINUTES=10
+
+# Email Configuration (for OTP delivery)
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+DEFAULT_FROM_EMAIL=noreply@inbo.me
+```
+
+## Testing
+
+### Manual Testing
+
+```bash
+# Send OTP
+curl -X POST http://localhost:8000/api/auth/send-otp/ \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com"}'
+
+# Verify OTP (use OTP from email)
+curl -X POST http://localhost:8000/api/auth/verify-otp/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "otp": "1234",
+    "deviceInfo": {
+      "deviceName": "Test Device",
+      "userAgent": "curl/7.68.0",
+      "ip": "127.0.0.1"
+    }
+  }'
+```
+
+## Related Documentation
+
+- [User App Documentation](/docs/backend/apps/user-app)
+- [Core Models Documentation](/docs/backend/models/overview)
+- [API Reference](/openapi/api-reference)

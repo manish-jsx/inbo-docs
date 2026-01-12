@@ -1,0 +1,100 @@
+---
+title: API Reference
+description: Complete API reference documentation for the INBO Backend
+---
+
+# API Reference
+
+This section contains the complete API reference for the INBO Backend, generated from the OpenAPI specification.
+
+## Overview
+
+The INBO Backend API provides comprehensive endpoints for managing users, emails, newsletters, subscriptions, and more. All endpoints follow RESTful conventions and return JSON responses.
+
+## Authentication
+
+All protected endpoints require JWT authentication. Include the access token in the Authorization header:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+### Getting an Access Token
+
+1. **Send OTP**: `POST /api/auth/otp/send/`
+2. **Verify OTP**: `POST /api/auth/otp/verify/`
+3. **Get Tokens**: Use the returned `accessToken` in subsequent requests
+
+## Base URLs
+
+- **Production**: `https://inbo-django-api.azurewebsites.net`
+- **Development**: `http://localhost:8000`
+
+## Interactive API Documentation
+
+The API documentation is available in two formats. Both provide interactive exploration of all API endpoints.
+
+### Swagger UI
+
+Swagger UI provides an interactive interface to explore and test API endpoints:
+
+**[Open Swagger UI →](https://inbo-django-api.azurewebsites.net/api/docs/)**
+
+**Features:**
+- Browse all API endpoints organized by tags
+- View request/response schemas
+- Try out API calls directly (if CORS is enabled)
+- See example requests and responses
+- Test authentication
+
+### ReDoc (Alternative View)
+
+ReDoc provides a clean, readable documentation format:
+
+**[Open ReDoc →](https://inbo-django-api.azurewebsites.net/api/redoc/)**
+
+**Features:**
+- Clean, readable documentation format
+- Better for reading and understanding APIs
+- Organized by tags and operations
+- Schema definitions and examples
+
+## API Endpoints Overview
+
+### Authentication (`/api/auth/`)
+- `POST /api/auth/otp/send/` - Send OTP email
+- `POST /api/auth/otp/verify/` - Verify OTP and get tokens
+- `POST /api/auth/token/refresh/` - Refresh access token
+
+### User Management (`/api/user/`)
+- `GET /api/user/profile/` - Get user profile
+- `GET /api/user/complete-data/` - Get complete user data
+- `POST /api/user/create-inbox/` - Create @inbo.me inbox
+- `GET /api/user/dashboard-data/` - Get dashboard statistics
+
+### Email Operations (`/api/email/`)
+- `GET /api/email/inbox/` - Get inbox emails
+- `GET /api/email/<id>/` - Get email details
+- `POST /api/email/<id>/favorite/` - Toggle favorite
+- `POST /api/email/<id>/highlight/` - Add highlight
+
+### Search (`/api/search/`)
+- `GET /api/search/unified/` - Unified search
+- `GET /api/search/providers/` - Search newsletter providers
+- `GET /api/search/emails/` - Search emails
+
+### And More...
+
+See the interactive documentation above for complete API reference.
+
+## Getting Started
+
+1. **Get Access Token**: Use the authentication endpoints to obtain a JWT token
+2. **Include Token**: Add the token to all API requests in the Authorization header
+3. **Explore APIs**: Use the interactive documentation above to explore and test endpoints
+
+## Schema Download
+
+You can download the OpenAPI schema:
+
+- **[Download OpenAPI Schema JSON](https://inbo-django-api.azurewebsites.net/api/schema/)** - Complete OpenAPI 3.0 specification
