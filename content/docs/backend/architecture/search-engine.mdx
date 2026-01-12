@@ -1,0 +1,573 @@
+---
+title: Search Engine Architecture
+description: Complete architecture and workflow documentation for the INBO Search Engine
+---
+
+# Search Engine Architecture
+
+## Overview
+
+The INBO Search Engine provides full-text search capabilities across newsletters, emails, newsletter posts, and inbox items using **Bonsai.io** (Elasticsearch-as-a-Service) with intelligent Redis caching for optimal performance.
+
+## Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "📊 Data Sources"
+        NPModel[NewsletterProvider<br/>Public Directory]
+        EmailModel[Email<br/>User Emails]
+        NewsModel[Newsletter<br/>User Subscriptions]
+        PostModel[NewsletterPost<br/>Publication History]
+        InboxModel[InboxEmail<br/>@inbo.me Addresses]
+    end
+
+    subgraph "🔄 Indexing Pipeline"
+        Signals[Django Signals<br/>Auto-Index on Save/Delete]
+        IndexClient[OpenSearch Client<br/>opensearch-py]
+    end
+
+    subgraph "🌳 Bonsai.io Elasticsearch Cluster"
+        Bonsai[Bonsai.io Cluster]
+        
+        subgraph "Global Search Index"
+            NPIndex[newsletter_providers<br/>📰 Global Newsletter Directory]
+        end
+        
+        subgraph "User-Level Search Indexes"
+            EmailIndex[emails<br/>📧 User Email Search]
+            NewsIndex[newsletters<br/>📬 User Subscriptions]
+            PostIndex[newsletter_posts<br/>📄 Newsletter Posts]
+            InboxIndex[inbox_emails<br/>📥 Inbox Emails]
+        end
+    end
+
+    subgraph "🔍 Search Request Flow"
+        API[Search API Endpoints]
+        CacheMgr[Redis Cache Manager]
+        CacheDecision{Cache<br/>Hit?}
+    end
+
+    subgraph "💾 Redis Cache Layer"
+        Redis[(Redis Cache<br/>Search Results<br/>TTL: 5 minutes<br/>60-80% hit rate)]
+    end
+
+    subgraph "📤 Search Results"
+        GlobalResults[Global Search<br/>Results]
+        UserResults[User-Level<br/>Search Results]
+    end
+
+    %% ========== INDEXING FLOW ==========
+    NPModel --> Signals
+    EmailModel --> Signals
+    NewsModel --> Signals
+    PostModel --> Signals
+    InboxModel --> Signals
+    
+    Signals -->|Index Documents| IndexClient
+    IndexClient -->|HTTP/HTTPS| Bonsai
+    
+    Bonsai --> NPIndex
+    Bonsai --> EmailIndex
+    Bonsai --> NewsIndex
+    Bonsai --> PostIndex
+    Bonsai --> InboxIndex
+
+    %% Cache Invalidation
+    Signals -.->|Invalidate Cache<br/>on Model Update| Redis
+
+    %% ========== SEARCH FLOW ==========
+    API -->|1. Query Request| CacheMgr
+    CacheMgr -->|2. Check Cache Key| CacheDecision
+    
+    %% Cache Hit Path (Fast Path - 60-80% of queries)
+    CacheDecision -->|✅ Cache Hit<br/>~10ms response| Redis
+    Redis -->|3a. Return Cached Results| API
+    
+    %% Cache Miss Path (Slow Path - 20-40% of queries)
+    CacheDecision -->|❌ Cache Miss| IndexClient
+    IndexClient -->|4. Search Query| Bonsai
+    
+    %% Query Execution
+    Bonsai -->|Query| NPIndex
+    Bonsai -->|Query| EmailIndex
+    Bonsai -->|Query| NewsIndex
+    Bonsai -->|Query| PostIndex
+    Bonsai -->|Query| InboxIndex
+    
+    %% Results Return
+    NPIndex -->|Results| IndexClient
+    EmailIndex -->|Results| IndexClient
+    NewsIndex -->|Results| IndexClient
+    PostIndex -->|Results| IndexClient
+    InboxIndex -->|Results| IndexClient
+    
+    %% Cache and Format Results
+    IndexClient -->|5. Store in Cache| Redis
+    IndexClient -->|6. Format Results| GlobalResults
+    IndexClient -->|6. Format Results| UserResults
+    
+    GlobalResults -->|Response| API
+    UserResults -->|Response| API
+```
+
+## Core Components
+
+### 1. Search Infrastructure
+
+#### Bonsai.io (Elasticsearch-as-a-Service)
+- **Service**: Managed Elasticsearch cluster
+- **Connection**: HTTP/HTTPS with authentication
+- **Configuration**: `BONSAI_URL` environment variable
+- **Benefits**: 
+  - Automatic scaling and backups
+  - High availability
+  - Simple HTTP authentication
+  - No infrastructure management
+
+#### OpenSearch Client
+- **Library**: `opensearch-py` (compatible with OpenSearch 2.x)
+- **Location**: `search_app/opensearch_client.py`
+- **Function**: Manages connection to Bonsai.io cluster
+- **Features**:
+  - Connection pooling
+  - Automatic retries
+  - Error handling
+  - Graceful fallback to database
+
+### 2. Indexed Models
+
+#### NewsletterProvider (Global Index)
+- **Index Name**: `newsletter_providers`
+- **Scope**: Public directory (all users)
+- **Indexed Fields**:
+  - `name` (boost: 3x)
+  - `description` (boost: 2x)
+  - `author`
+  - `target_audience`
+  - `categories`, `tags`, `tones`
+  - `language`, `content_frequency`
+- **Auto-indexed**: ✅ Yes (Django signals)
+
+#### Email (User-Scoped Index)
+- **Index Name**: `emails`
+- **Scope**: User-specific (only authenticated user's emails)
+- **Indexed Fields**:
+  - `subject`
+  - `sender`
+  - `content_preview`
+  - `date_received`
+  - `is_read`, `is_favorite`
+- **Auto-indexed**: ✅ Yes
+- **User Filtering**: Applied automatically in queries
+
+#### NewsletterPost (User-Scoped Index)
+- **Index Name**: `newsletter_posts`
+- **Scope**: User-specific (posts from user's subscribed newsletters)
+- **Indexed Fields**:
+  - `title`
+  - `description`
+  - `content_preview`
+  - `author`
+  - `newsletter_url`, `post_url`, `post_slug`
+  - `published_at`, `last_modified`
+  - `is_read`, `reading_progress`
+- **Auto-indexed**: ✅ Yes (custom signal processor)
+- **Integration**: Linked to NewsletterProfile system
+
+#### Newsletter (User-Scoped Index)
+- **Index Name**: `newsletters`
+- **Scope**: User-specific (user's inbox subscriptions)
+- **Indexed Fields**:
+  - `name`
+  - `sender_email`
+  - `recipient_email`
+- **Auto-indexed**: ✅ Yes
+
+#### InboxEmail (User-Scoped Index)
+- **Index Name**: `inbox_emails`
+- **Scope**: User-specific (@inbo.me addresses)
+- **Indexed Fields**:
+  - `email` (username part)
+  - `user_id`
+- **Auto-indexed**: ✅ Yes
+
+### 3. Auto-Indexing System
+
+#### Django Signals
+- **Location**: `search_app/signals.py`
+- **Processor**: `CustomSignalProcessor`
+- **Triggers**:
+  - `post_save` → Index document
+  - `post_delete` → Remove from index
+- **Models Handled**:
+  - `NewsletterPost` (custom manual indexing)
+  - Other models (via django-elasticsearch-dsl if available)
+
+#### Signal Flow
+```python
+# When NewsletterPost is saved
+NewsletterPost.save() 
+  → post_save signal
+  → CustomSignalProcessor.handle_save()
+  → _index_newsletter_post()
+  → OpenSearch client.index()
+  → Bonsai.io cluster
+```
+
+### 4. Caching Layer
+
+#### Redis Cache Strategy
+- **Purpose**: Reduce Bonsai.io API calls by 60-80%
+- **TTL**: 5 minutes (default, configurable)
+- **Cache Key**: MD5 hash of query body
+- **Hit Rate**: 60-80% of queries served from cache
+- **Location**: `search_app/cached_search.py`
+
+#### Cache Functions
+```python
+# Core caching function
+cached_search(query, index, body, cache_timeout=300)
+
+# Multi-field search with caching
+multi_match_search(query, index, fields, boost=None, cache_timeout=300)
+
+# Filtered search with caching
+filtered_search(query, index, filters, cache_timeout=300)
+
+# Manual cache invalidation
+invalidate_search_cache(index=None, pattern='search:*')
+```
+
+#### Cache Invalidation
+- **Automatic**: Triggered by Django signals on model save/delete
+- **Pattern-based**: Can invalidate by index or pattern
+- **Selective**: Only invalidates relevant cache keys
+- **Non-blocking**: Doesn't block model operations
+
+## Search Workflow
+
+### 1. Indexing Workflow
+
+```mermaid
+sequenceDiagram
+    participant Model as Django Model
+    participant Signal as Django Signal
+    participant Processor as Signal Processor
+    participant Client as OpenSearch Client
+    participant Bonsai as Bonsai.io
+
+    Model->>Signal: post_save/post_delete
+    Signal->>Processor: handle_save/handle_delete
+    Processor->>Client: Prepare document
+    Client->>Bonsai: HTTP POST/PUT/DELETE
+    Bonsai-->>Client: Success/Error
+    Client-->>Processor: Result
+    Processor-->>Signal: Complete (non-blocking)
+```
+
+**Steps**:
+1. Model instance is saved/deleted
+2. Django signal fires (`post_save`/`post_delete`)
+3. `CustomSignalProcessor` handles the signal
+4. Document is prepared for indexing
+5. OpenSearch client sends request to Bonsai.io
+6. Bonsai.io indexes/removes document
+7. Cache is invalidated (if applicable)
+
+### 2. Search Request Workflow
+
+```mermaid
+sequenceDiagram
+    participant Client as API Client
+    participant API as Search API
+    participant Cache as Redis Cache
+    participant OpenSearch as OpenSearch Client
+    participant Bonsai as Bonsai.io
+
+    Client->>API: GET /api/search/unified/?q=query
+    API->>Cache: Check cache (MD5 hash of query)
+    
+    alt Cache Hit (60-80% of queries)
+        Cache-->>API: Return cached results (~10ms)
+        API-->>Client: Search results
+    else Cache Miss (20-40% of queries)
+        API->>OpenSearch: Build search query
+        OpenSearch->>Bonsai: Execute search query
+        Bonsai-->>OpenSearch: Search results
+        OpenSearch->>Cache: Store results (TTL: 5min)
+        OpenSearch-->>API: Formatted results
+        API-->>Client: Search results (50-200ms)
+    end
+```
+
+**Steps**:
+1. **Request**: User makes search request via API endpoint
+2. **Authentication**: Request is authenticated (user-level searches require auth)
+3. **Query Building**: Search query is built with appropriate filters
+4. **Cache Check**: Redis cache is checked using MD5 hash of query body
+   - **Cache Hit**: Results returned immediately (~10ms)
+   - **Cache Miss**: Proceeds to query Bonsai.io
+5. **Bonsai.io Query**: Query sent to Bonsai.io Elasticsearch cluster
+6. **Results**: Results returned with relevance scores
+7. **Cache Storage**: Results stored in Redis with 5-minute TTL
+8. **Response**: Results serialized and returned to client
+
+### 3. Performance Characteristics
+
+#### Cache Hit Path (60-80% of queries)
+- **Response Time**: < 10ms
+- **Source**: Redis cache
+- **No External Calls**: Bypasses Bonsai.io
+
+#### Cache Miss Path (20-40% of queries)
+- **Response Time**: 50-200ms (depending on query complexity)
+- **Source**: Bonsai.io Elasticsearch
+- **Cache Storage**: Results cached for future requests
+
+## API Endpoints
+
+### Unified Search
+
+Search across all content types with a single query:
+
+```
+GET /api/search/unified/?q=query&types=providers,emails,posts&page=1&page_size=20
+```
+
+**Query Parameters**:
+- `q` (required): Search query
+- `types`: Comma-separated list (providers, emails, posts, newsletters)
+- `page`: Page number (default: 1)
+- `page_size`: Results per page (default: 20)
+
+**Response**:
+```json
+{
+  "results": [
+    {
+      "type": "provider",
+      "id": "...",
+      "name": "Tech Newsletter",
+      "description": "...",
+      "score": 0.95
+    },
+    {
+      "type": "email",
+      "id": "...",
+      "subject": "Weekly Newsletter",
+      "sender": "newsletter@example.com",
+      "score": 0.85
+    }
+  ],
+  "total": 50,
+  "page": 1,
+  "page_size": 20,
+  "has_next": true,
+  "has_previous": false
+}
+```
+
+### Newsletter Provider Search
+
+Search public newsletter directory:
+
+```
+GET /api/search/providers/search/?q=query&categories=tech,business&tags=ai,startups&language=en
+```
+
+**Query Parameters**:
+- `q`: Search query
+- `categories`: Filter by categories (comma-separated)
+- `tags`: Filter by tags (comma-separated)
+- `language`: Filter by language
+- `page`: Page number
+- `page_size`: Results per page
+
+**Response**:
+```json
+{
+  "results": [...],
+  "total": 50,
+  "page": 1,
+  "page_size": 20,
+  "aggregations": {
+    "categories": [
+      {"key": "Technology", "doc_count": 25}
+    ],
+    "tags": [
+      {"key": "AI", "doc_count": 10}
+    ]
+  }
+}
+```
+
+### Email Search
+
+Search user's emails (requires authentication):
+
+```
+GET /api/search/emails/search/?q=query&is_read=false&is_favorite=true&sender=example@email.com
+```
+
+**Query Parameters**:
+- `q`: Search query
+- `is_read`: Filter by read status
+- `is_favorite`: Filter by favorite status
+- `sender`: Filter by sender email
+- `page`: Page number
+- `page_size`: Results per page
+
+### Newsletter Post Search
+
+Search newsletter posts (requires authentication):
+
+```
+GET /api/search/posts/search/?q=query&newsletter_url=https://example.substack.com&is_read=false
+```
+
+**Query Parameters**:
+- `q`: Search query
+- `newsletter_url`: Filter by newsletter URL
+- `is_read`: Filter by read status
+- `page`: Page number
+- `page_size`: Results per page
+
+## Integration Points
+
+### 1. Newsletter Profile Integration
+
+**Connection**: NewsletterPost model is indexed for search
+
+**Flow**:
+1. NewsletterPost is created/updated via NewsletterFetcherService
+2. Django signal triggers auto-indexing
+3. Post becomes searchable via `/api/search/posts/search/`
+4. Search results include user's subscribed newsletter posts
+
+**Benefits**:
+- Users can search across all posts from their subscribed newsletters
+- Full-text search on post titles, descriptions, and content
+- Filter by newsletter URL, read status, publication date
+
+### 2. Recommendation Engine Integration
+
+**Connection**: Search results can feed recommendation engine
+
+**Flow**:
+1. User searches for newsletters/posts
+2. Search results include relevance scores
+3. Recommendation engine can use search patterns to improve recommendations
+4. Popular search terms can influence trending recommendations
+
+**Future Enhancement**:
+- Search analytics → Recommendation signals
+- Search history → User preference learning
+
+### 3. Database Fallback
+
+**Graceful Degradation**: If Bonsai.io is unavailable, search falls back to database queries
+
+**Implementation**:
+- Checks for OpenSearch availability
+- Falls back to Django ORM queries
+- Maintains same API interface
+- Logs warnings but doesn't fail
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Bonsai.io Configuration (Production)
+BONSAI_URL=https://username:password@your-cluster.region.bonsaisearch.net
+
+# Or use separate credentials
+OPENSEARCH_HOST=https://your-cluster.region.bonsaisearch.net
+OPENSEARCH_USER=your_username
+OPENSEARCH_PASSWORD=your_password
+
+# Elasticsearch DSL Configuration
+ELASTICSEARCH_AUTOSYNC=True
+ELASTICSEARCH_AUTO_REFRESH=True
+```
+
+### Index Management
+
+```bash
+# Rebuild all indexes
+python manage.py rebuild_search_index
+
+# Rebuild specific index
+python manage.py rebuild_search_index --index providers
+python manage.py rebuild_search_index --index emails
+python manage.py rebuild_search_index --index posts
+
+# Delete and rebuild
+python manage.py rebuild_search_index --delete
+```
+
+## Monitoring and Performance
+
+### Key Metrics
+
+- **Cache Hit Rate**: 60-80% (target: >70%)
+- **Average Response Time**: 
+  - Cache hits: < 10ms
+  - Cache misses: 50-200ms
+- **Bonsai.io API Calls**: Reduced by 60-80% via caching
+- **Index Size**: Monitor growth per index
+- **Query Performance**: Track slow queries
+
+### Monitoring Points
+
+1. **Cache Performance**:
+   - Hit rate percentage
+   - Cache size
+   - TTL effectiveness
+
+2. **Bonsai.io Health**:
+   - Cluster status
+   - Query latency
+   - Error rates
+
+3. **Indexing Performance**:
+   - Indexing lag
+   - Failed index operations
+   - Signal processing time
+
+## Troubleshooting
+
+### Index Not Found
+```bash
+# Rebuild the index
+python manage.py rebuild_search_index --index <index_name>
+```
+
+### Connection Errors
+- Check Bonsai.io cluster is running
+- Verify `BONSAI_URL` environment variable
+- Check firewall/network settings
+- Review authentication credentials
+
+### Search Returns No Results
+- Verify indexes are populated: `python manage.py rebuild_search_index`
+- Check user authentication (for user-scoped searches)
+- Verify query syntax and filters
+- Check index mapping matches model fields
+
+### Cache Issues
+- Clear Redis cache: `invalidate_search_cache()`
+- Check Redis connection
+- Verify cache TTL settings
+- Monitor cache memory usage
+
+## Future Enhancements
+
+- [ ] Advanced query syntax (AND, OR, NOT operators)
+- [ ] Highlighting of search terms in results
+- [ ] Search suggestions/autocomplete
+- [ ] Search analytics and trending searches
+- [ ] Multi-language support with proper analyzers
+- [ ] Vector search for semantic similarity
+- [ ] Search result personalization based on user preferences
+- [ ] A/B testing for search ranking algorithms

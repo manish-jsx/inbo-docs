@@ -1,335 +1,131 @@
 ---
-title: System Architecture Overview
-description: High-level architecture of the INBO Backend system
+title: Backend Architecture Overview
+description: Overview of the INBO backend architecture and core services
 ---
 
-# System Architecture Overview
+# Backend Architecture Overview
 
-## Architecture Diagram
+## Introduction
 
-```mermaid
-graph TB
-    subgraph "Client Layer"
-        Web[Web App<br/>Next.js]
-        Mobile[Mobile App<br/>React Native]
-    end
+The INBO backend is a Django-based REST API that powers a newsletter discovery, subscription, and reading platform. The system consists of multiple integrated services working together to provide personalized newsletter experiences.
 
-    subgraph "API Gateway Layer"
-        Django[Django REST API<br/>Django 5.0.6]
-        Admin[Admin Panel<br/>Unfold]
-    end
+## Core Services
 
-    subgraph "Application Layer"
-        Auth[Auth App<br/>OTP & JWT]
-        User[User App<br/>Profiles & Management]
-        Email[Email App<br/>Email Operations]
-        Search[Search App<br/>Elasticsearch]
-        Rec[Recommendation Engine<br/>Personalization]
-        Exp[Experience App<br/>Orchestration]
-    end
+### 1. Search Engine
+Full-text search across newsletters, emails, and posts using Bonsai.io (Elasticsearch-as-a-Service).
 
-    subgraph "Data Layer"
-        PostgreSQL[(PostgreSQL<br/>Primary Database)]
-        Redis[(Redis<br/>Cache & Queue)]
-        Elasticsearch[(Elasticsearch<br/>Search Index)]
-        AzureBlob[(Azure Blob<br/>File Storage)]
-    end
+**Key Features**:
+- Unified search across all content types
+- User-scoped search for emails and posts
+- Redis caching (60-80% hit rate)
+- Auto-indexing via Django signals
 
-    subgraph "Background Processing"
-        Celery[Celery Workers<br/>Task Processing]
-        Beat[Celery Beat<br/>Scheduled Tasks]
-    end
+**Documentation**: [Search Engine Architecture](/docs/backend/architecture/search-engine)
 
-    subgraph "External Services"
-        Stripe[Stripe<br/>Payments]
-        Gmail[Gmail API<br/>Email Sync]
-        OpenAI[OpenAI<br/>AI Features]
-        Firebase[Firebase<br/>Push Notifications]
-    end
+### 2. Recommendation Engine
+Personalized newsletter recommendations based on user behavior and preferences.
 
-    Web --> Django
-    Mobile --> Django
-    Django --> Admin
+**Key Features**:
+- Hybrid scoring algorithm (personalization + popularity + freshness)
+- Event-based learning from user interactions
+- Feature store for user and item features
+- Async processing via Celery
 
-    Django --> Auth
-    Django --> User
-    Django --> Email
-    Django --> Search
-    Django --> Rec
-    Django --> Exp
+**Documentation**: [Recommendation Engine Architecture](/docs/backend/architecture/recommendation-engine)
 
-    Auth --> PostgreSQL
-    User --> PostgreSQL
-    Email --> PostgreSQL
-    Search --> Elasticsearch
-    Rec --> PostgreSQL
-    Exp --> Redis
+### 3. Newsletter Profile with Publication History
+Manages user newsletter subscriptions and fetches publication history from sitemaps.
 
-    Django --> Redis
-    Django --> AzureBlob
+**Key Features**:
+- Newsletter subscription management
+- Automatic post fetching from sitemaps
+- Reading progress tracking
+- Integration with search and recommendations
 
-    Celery --> Redis
-    Celery --> PostgreSQL
-    Beat --> Celery
+**Documentation**: [Newsletter Profile Architecture](/docs/backend/architecture/newsletter-profile)
 
-    Django --> Stripe
-    Django --> Gmail
-    Django --> OpenAI
-    Django --> Firebase
-```
+### 4. Experience App
+UI personalization engine that orchestrates every page, section, and component.
 
-## System Components
+**Key Features**:
+- Personalized experience generation for every page
+- Real-time state management in Redis
+- Section scoring and ranking
+- Diversity and fatigue control
+- Feedback loop to Recommendation Engine
 
-### 1. API Layer (Django REST Framework)
+**Documentation**: [Experience App Architecture](/docs/backend/architecture/experience-app)
 
-The API layer provides RESTful endpoints for all client interactions:
+## Service Integration
 
-- **Authentication**: JWT-based authentication with OTP verification
-- **User Management**: Profile, inbox, device management
-- **Email Operations**: CRUD operations, search, filtering
-- **Search**: Full-text search across all content types
-- **Recommendations**: Personalized content recommendations
-- **Experience**: Dynamic UI orchestration
-- **Subscriptions**: Payment and subscription management
+The four core services are tightly integrated with a continuous feedback loop:
 
-### 2. Application Layer
+**Forward Flow**:
+- **Newsletter Profile → Search**: Posts auto-indexed for search
+- **Newsletter Profile → Recommendation**: Preferences feed personalization
+- **Recommendation → Experience**: Recommendations populate experience sections
+- **Search ↔ Recommendation**: Search behavior influences recommendations
 
-#### Core Apps
-- **core**: Base models and utilities
-- **auth_app**: Authentication and authorization
-- **user_app**: User management services
-- **email_app**: Email operations
-- **reading_app**: Reading statistics
+**Feedback Loop**:
+- **Experience → Recommendation**: Interactions update recommendation rankings
+- **Experience → Recommendation**: User behavior improves personalization
+- **Experience → Recommendation**: Real-time state feeds feature updates
 
-#### Content Apps
-- **directory_app**: Newsletter directory
-- **newsletter_profile_app**: Newsletter subscriptions
-- **search_app**: Search functionality
-- **recommendation_engine**: Recommendation system
-- **experience_app**: Experience orchestration
+**Documentation**: [Service Integration Architecture](/docs/backend/architecture/service-integration)
 
-#### Integration Apps
-- **gmail_app**: Gmail integration
-- **integration_app**: Third-party integrations
-- **subscription_app**: Subscriptions
-- **ai_app**: AI features
-- **azure_app**: Azure storage
+## Technology Stack
 
-### 3. Data Layer
+### Backend Framework
+- **Django 5.0.6**: Web framework
+- **Django REST Framework**: REST API framework
+- **PostgreSQL**: Primary database
+- **Redis**: Caching and Celery message broker
 
-#### PostgreSQL
-Primary relational database storing:
-- User accounts and profiles
-- Emails and newsletters
-- Subscriptions and payments
-- Reading statistics
-- Recommendations
-- Experience data
+### Search Infrastructure
+- **Bonsai.io**: Elasticsearch-as-a-Service
+- **opensearch-py**: OpenSearch client library
+- **django-elasticsearch-dsl**: Django-Elasticsearch integration
 
-#### Redis
-Used for:
-- **Caching**: Search results, user features, item features
-- **Task Queue**: Celery task broker
-- **Session Storage**: User sessions
-- **Real-time State**: Experience orchestration state
+### Background Processing
+- **Celery**: Distributed task queue
+- **Redis**: Message broker
+- **Celery Beat**: Periodic task scheduler
 
-#### Elasticsearch (Bonsai.io)
-Search indexes:
-- `newsletter_providers` - Global newsletter directory
-- `emails` - User emails
-- `newsletters` - User newsletter subscriptions
-- `newsletter_posts` - Newsletter posts
-- `inbox_emails` - Inbox email addresses
+### External Services
+- **Stripe**: Payment processing
+- **Firebase Admin**: Push notifications
+- **Azure Blob Storage**: File storage
+- **OpenAI**: AI features
+- **Gmail API**: Email integration
 
-#### Azure Blob Storage
-File storage for:
-- Email attachments
-- User uploads
-- Newsletter images
-- Profile pictures
+## Architecture Principles
 
-### 4. Background Processing
+### 1. Service-Oriented Architecture
+- Business logic encapsulated in service classes
+- Clear separation of concerns
+- Reusable service methods
 
-#### Celery Workers
-Process background tasks:
-- Email processing
-- Newsletter fetching
-- Feature aggregation
-- Recommendation computation
-- Analytics aggregation
-- Cache invalidation
+### 2. Async-First Design
+- Non-blocking operations via Celery
+- Background processing for heavy operations
+- Real-time where needed, async where possible
 
-#### Celery Beat
-Scheduled tasks:
-- Daily reading statistics
-- Newsletter post fetching
-- Feature updates
-- Metrics aggregation
-- Cache cleanup
+### 3. Graceful Degradation
+- Services work independently
+- Fallbacks for external service failures
+- Database fallback for search
 
-### 5. External Services
+### 4. Performance Optimization
+- Redis caching for frequently accessed data
+- Database query optimization
+- Indexed models for fast lookups
 
-#### Stripe
-- Payment processing
-- Subscription management
-- Webhook handling
+## Quick Links
 
-#### Gmail API
-- Email synchronization
-- OAuth authentication
-- Email import
-
-#### OpenAI
-- Email summarization
-- Content generation
-- AI-powered features
-
-#### Firebase
-- Push notifications
-- User messaging
-
-## Data Flow
-
-### 1. User Request Flow
-
-```
-Client Request
-    ↓
-Django Middleware (CORS, Auth, CSRF)
-    ↓
-URL Router
-    ↓
-View/ViewSet
-    ↓
-Service Layer
-    ↓
-Model Layer
-    ↓
-Database/External Service
-    ↓
-Response Serialization
-    ↓
-Client Response
-```
-
-### 2. Search Flow
-
-```
-Search Request
-    ↓
-Check Redis Cache
-    ├─ Cache Hit → Return Results
-    └─ Cache Miss → Query Elasticsearch
-        ↓
-    Format Results
-    ↓
-    Store in Redis
-    ↓
-    Return Results
-```
-
-### 3. Recommendation Flow
-
-```
-Recommendation Request
-    ↓
-Get User Features (Redis Cache)
-    ↓
-Generate Candidates
-    ├─ From User Features
-    ├─ From Search
-    └─ From Popularity
-    ↓
-Score Candidates
-    ├─ User Affinity
-    ├─ Item Features
-    └─ Context
-    ↓
-Apply Diversity & Fatigue
-    ↓
-Return Top N Recommendations
-```
-
-### 4. Experience Orchestration Flow
-
-```
-Experience Request
-    ↓
-Infer User Intent
-    ↓
-Generate Section Candidates
-    ↓
-Score Sections
-    ├─ User Affinity
-    ├─ Context Relevance
-    ├─ Freshness
-    └─ Popularity
-    ↓
-Apply Fatigue Control
-    ↓
-Populate Section Items
-    ↓
-Return Personalized Experience
-```
-
-## Security Architecture
-
-### Authentication
-- **OTP Verification**: Email-based one-time password
-- **JWT Tokens**: Access and refresh tokens
-- **Device Tracking**: Device-specific tokens
-- **Session Management**: Secure session handling
-
-### Authorization
-- **Django Permissions**: Built-in permission system
-- **Guardian**: Object-level permissions
-- **Role-Based Access**: Staff and superuser roles
-
-### Data Protection
-- **CSRF Protection**: Cross-site request forgery protection
-- **CORS Configuration**: Controlled cross-origin access
-- **SQL Injection Prevention**: Django ORM protection
-- **XSS Protection**: Input sanitization
-
-## Scalability Considerations
-
-### Horizontal Scaling
-- **Stateless API**: All API servers are stateless
-- **Load Balancing**: Can scale API servers horizontally
-- **Database Connection Pooling**: PgBouncer for PostgreSQL
-- **Redis Cluster**: Redis cluster for high availability
-
-### Vertical Scaling
-- **Database Optimization**: Indexes, query optimization
-- **Caching Strategy**: Multi-layer caching
-- **Background Processing**: Async task processing
-
-### Performance Optimizations
-- **Database Queries**: `select_related`, `prefetch_related`
-- **Redis Caching**: Search results, user features
-- **CDN**: Static file serving
-- **Connection Pooling**: Database and Redis connections
-
-## Monitoring & Observability
-
-### Logging
-- **Django Logging**: Application logs
-- **Error Tracking**: Exception logging
-- **Request Logging**: API request/response logs
-
-### Metrics
-- **Performance Metrics**: Response times, query times
-- **Business Metrics**: User engagement, conversions
-- **System Metrics**: CPU, memory, disk usage
-
-### Health Checks
-- **API Health**: `/health` endpoint
-- **Database Health**: Connection checks
-- **Redis Health**: Cache availability
-- **Elasticsearch Health**: Search availability
-
-## Next Steps
-
-- [Search Architecture](/docs/backend/architecture/search-architecture) - Detailed search system architecture with Bonsai.io
-- [Recommendation Engine Architecture](/docs/backend/architecture/recommendation-engine) - Recommendation system design with hybrid scoring
-- [Experience Orchestration](/docs/backend/architecture/experience-orchestration) - Experience orchestration system for personalization
+- [Search Engine Architecture](/docs/backend/architecture/search-engine)
+- [Recommendation Engine Architecture](/docs/backend/architecture/recommendation-engine)
+- [Newsletter Profile Architecture](/docs/backend/architecture/newsletter-profile)
+- [Experience App Architecture](/docs/backend/architecture/experience-app)
+- [Service Integration](/docs/backend/architecture/service-integration)
+- [API Documentation](/docs/backend/api/overview)
+- [Models Documentation](/docs/backend/models/overview)

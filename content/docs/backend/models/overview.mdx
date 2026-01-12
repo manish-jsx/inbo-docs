@@ -18,33 +18,33 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 **Complete Field List**:
 - `id` (UUIDField) - Primary key, auto-generated
 - `email` (EmailField) - Unique email address, indexed
-- `password` (CharField) - DEPRECATED: Legacy field (null=True, blank=True)
-- `name` (CharField) - User's full name (null=True, blank=True)
+- `password` (CharField) - DEPRECATED: Legacy field (`null=True`, `blank=True`)
+- `name` (CharField) - User's full name (`null=True`, `blank=True`)
 - `created_at` (DateTimeField) - Account creation timestamp, indexed
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 - `storage_used` (BigIntegerField) - Storage used in bytes (default=0)
-- `is_verified` (BooleanField) - Email verification status (default=False)
-- `picture` (URLField) - Profile picture URL (null=True, blank=True)
-- `primary_auth_method` (CharField) - Auth method: EMAIL or OAUTH (default=EMAIL)
+- `is_verified` (BooleanField) - Email verification status (default=`False`)
+- `picture` (URLField) - Profile picture URL (`null=True`, `blank=True`)
+- `primary_auth_method` (CharField) - Auth method: EMAIL or OAUTH (default=`EMAIL`)
 - `summarization_used` (IntegerField) - AI summaries used count (default=0)
-- `summarization_limit_reset` (DateTimeField) - Limit reset timestamp (default=now)
-- `stripe_customer_id` (CharField) - Stripe customer ID (null=True, blank=True)
-- `subscription_plan` (ForeignKey) - Current subscription plan → SubscriptionPlan (null=True)
-- `subscription_status` (CharField) - Status: FREE, PENDING, ACTIVE, PAST_DUE, CANCELED, TRIALING (default=FREE)
-- `subscription_end_date` (DateTimeField) - Subscription end date (null=True, blank=True)
+- `summarization_limit_reset` (DateTimeField) - Limit reset timestamp (default=timezone.now)
+- `stripe_customer_id` (CharField) - Stripe customer ID (`null=True`, `blank=True`)
+- `subscription_plan` (ForeignKey) - Current subscription plan → SubscriptionPlan (`null=True`)
+- `subscription_status` (CharField) - Status: FREE, PENDING, ACTIVE, PAST_DUE, CANCELED, TRIALING (default=`FREE`)
+- `subscription_end_date` (DateTimeField) - Subscription end date (`null=True`, `blank=True`)
 - `streak_count` (IntegerField) - Current reading streak (default=0)
 - `longest_streak` (IntegerField) - Longest streak achieved (default=0)
-- `last_streak_date` (DateField) - Last streak date (null=True, blank=True)
-- `streak_updated_at` (DateTimeField) - Streak last update (default=now)
-- `fcm_token` (CharField) - FCM token for push notifications (null=True, blank=True)
-- `is_staff` (BooleanField) - Django staff status (default=False)
-- `is_active` (BooleanField) - Django active status (default=True)
-- `date_joined` (DateTimeField) - Django date joined (default=now)
+- `last_streak_date` (DateField) - Last streak date (`null=True`, `blank=True`)
+- `streak_updated_at` (DateTimeField) - Streak last update (default=timezone.now)
+- `fcm_token` (CharField) - FCM token for push notifications (`null=True`, `blank=True`)
+- `is_staff` (BooleanField) - Django staff status (default=`False`)
+- `is_active` (BooleanField) - Django active status (default=`True`)
+- `date_joined` (DateTimeField) - Django date joined (default=timezone.now)
 - `birth_year` (CharField) - Birth year (max_length=4, null=True, blank=True)
 - `gender` (CharField) - Gender (max_length=50, null=True, blank=True)
-- `inbox_username` (CharField) - @inbo.me username, unique, indexed (null=True, blank=True)
-- `onboarding_completed` (BooleanField) - Onboarding completion status, indexed (default=False)
-- `onboarding_completed_at` (DateTimeField) - Onboarding completion timestamp (null=True, blank=True)
+- `inbox_username` (CharField) - @inbo.me username, unique, indexed (`null=True`, `blank=True`)
+- `onboarding_completed` (BooleanField) - Onboarding completion status, indexed (default=`False`)
+- `onboarding_completed_at` (DateTimeField) - Onboarding completion timestamp (`null=True`, `blank=True`)
 
 **Model Methods**:
 - `username` (property) - Returns inbox_username if set, otherwise email prefix
@@ -74,27 +74,27 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 **Complete Field List**:
 - `id` (UUIDField) - Primary key, auto-generated
 - `sender` (CharField) - Sender email address (max_length=255)
-- `recipient` (ForeignKey) - Recipient inbox email → InboxEmail (null=True, blank=True, related_name='emails')
-- `subject` (TextField) - Email subject (null=True, blank=True)
-- `date_received` (DateTimeField) - Received timestamp, indexed (null=True, blank=True)
+- `recipient` (ForeignKey) - Recipient inbox email → InboxEmail (`null=True`, `blank=True`, related_name='emails')
+- `subject` (TextField) - Email subject (`null=True`, `blank=True`)
+- `date_received` (DateTimeField) - Received timestamp, indexed (`null=True`, `blank=True`)
 - `message_id` (CharField) - Email message ID (max_length=255, null=True, blank=True)
 - `storage_path` (CharField) - Azure blob storage path (max_length=500, null=True, blank=True)
-- `content_preview` (TextField) - Email content preview (null=True, blank=True)
-- `is_read` (BooleanField) - Read status (default=False)
-- `is_favorite` (BooleanField) - Favorite status (default=False)
-- `is_read_later` (BooleanField) - Read later status (default=False)
+- `content_preview` (TextField) - Email content preview (`null=True`, `blank=True`)
+- `is_read` (BooleanField) - Read status (default=`False`)
+- `is_favorite` (BooleanField) - Favorite status (default=`False`)
+- `is_read_later` (BooleanField) - Read later status (default=`False`)
 - `reading_progress` (IntegerField) - Reading progress 0-100 (default=0)
-- `created_at` (DateTimeField) - Creation timestamp, indexed (default=now)
+- `created_at` (DateTimeField) - Creation timestamp, indexed (default=timezone.now)
 - `content_size` (IntegerField) - Content size in bytes (default=1)
-- `is_deleted` (BooleanField) - Soft delete flag (default=False)
-- `deleted_at` (DateTimeField) - Deletion timestamp (null=True, blank=True)
-- `permanent_delete_at` (DateTimeField) - Permanent deletion scheduled time (null=True, blank=True)
+- `is_deleted` (BooleanField) - Soft delete flag (default=`False`)
+- `deleted_at` (DateTimeField) - Deletion timestamp (`null=True`, `blank=True`)
+- `permanent_delete_at` (DateTimeField) - Permanent deletion scheduled time (`null=True`, `blank=True`)
 - `time_spent` (IntegerField) - Time spent reading in seconds (default=0)
 - `words_count` (IntegerField) - Word count (default=0)
-- `is_shared` (BooleanField) - Sharing status (default=False)
-- `user` (ForeignKey) - Owner user → User (null=True, blank=True, related_name='emails')
-- `folder` (ForeignKey) - Folder assignment → Folder (null=True, blank=True, related_name='emails', on_delete=SET_NULL)
-- `categories` (JSONField) - Email categories (default=list)
+- `is_shared` (BooleanField) - Sharing status (default=`False`)
+- `user` (ForeignKey) - Owner user → User (`null=True`, `blank=True`, related_name='emails')
+- `folder` (ForeignKey) - Folder assignment → Folder (`null=True`, `blank=True`, `related_name='emails'`, `on_delete=SET_NULL`)
+- `categories` (JSONField) - Email categories (default=`list`)
 
 **Constraints**:
 - `reading_progress` must be between 0 and 100
@@ -135,10 +135,10 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `recipient` (ForeignKey) - Recipient inbox email → InboxEmail (related_name='newsletters')
 - `name` (CharField) - Newsletter name (max_length=255)
 - `sender_email` (CharField) - Sender email address (max_length=255)
-- `first_received` (DateTimeField) - First email received timestamp (null=True, blank=True)
-- `last_received` (DateTimeField) - Last email received timestamp (null=True, blank=True)
+- `first_received` (DateTimeField) - First email received timestamp (`null=True`, `blank=True`)
+- `last_received` (DateTimeField) - Last email received timestamp (`null=True`, `blank=True`)
 - `email_count` (IntegerField) - Total emails received (default=0)
-- `is_accepted` (BooleanField) - User acceptance status (default=False)
+- `is_accepted` (BooleanField) - User acceptance status (default=`False`)
 
 **Constraints**:
 - `email_count` must be non-negative (>= 0)
@@ -162,7 +162,7 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `id` (UUIDField) - Primary key, auto-generated
 - `name` (CharField) - Folder name (max_length=255)
 - `user` (ForeignKey) - Owner user → User (related_name='folders')
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
 
 **Constraints**:
 - Unique together: `(user, name)` - One folder per name per user
@@ -181,7 +181,7 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `id` (UUIDField) - Primary key, auto-generated
 - `email` (CharField) - Username part (e.g., "john" for "john@inbo.me"), unique, indexed (max_length=255, unique=True)
 - `user` (ForeignKey) - Owner user → User (related_name='inbox_emails')
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
 
 **Relationships**:
 - Many-to-One: `user` → User
@@ -200,7 +200,7 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `total_emails` (IntegerField) - Total emails count (default=0)
 - `today_read` (IntegerField) - Emails read today (default=0)
 - `previous_read` (IntegerField) - Emails read previously (default=0)
-- `created_at` (DateTimeField) - Statistics date/timestamp, indexed (default=now)
+- `created_at` (DateTimeField) - Statistics date/timestamp, indexed (default=timezone.now)
 - `total_time_spent` (IntegerField) - Total time spent reading in seconds (default=0)
 - `total_words_read` (IntegerField) - Total words read (default=0)
 
@@ -222,11 +222,11 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 
 **Complete Field List**:
 - `id` (UUIDField) - Primary key, auto-generated
-- `user` (ForeignKey) - Associated user → User (null=True, blank=True, related_name='verification_requests')
+- `user` (ForeignKey) - Associated user → User (`null=True`, `blank=True`, related_name='verification_requests')
 - `token` (CharField) - Hashed verification token (max_length=255)
-- `created_at` (DateTimeField) - Request creation timestamp, indexed (default=now)
+- `created_at` (DateTimeField) - Request creation timestamp, indexed (default=timezone.now)
 - `type` (CharField) - Verification type: EMAIL, FOGET_PASSWORD, OTP (max_length=20, default=EMAIL)
-- `email` (EmailField) - Email address for OTP requests without user (null=True, blank=True)
+- `email` (EmailField) - Email address for OTP requests without user (`null=True`, `blank=True`)
 
 **Constraints**:
 - Unique together: `(user, type)` - One active request per type per user
@@ -246,11 +246,11 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `user` (ForeignKey) - Owner user → User (related_name='devices')
 - `device_id` (CharField) - Unique device identifier, indexed (max_length=255, unique=True)
 - `device_name` (CharField) - Device name/description (max_length=255)
-- `device_info` (JSONField) - Device information (null=True, blank=True)
-- `ip_address` (GenericIPAddressField) - IP address (null=True, blank=True)
-- `is_active` (BooleanField) - Active status (default=True)
-- `last_active_at` (DateTimeField) - Last active timestamp (default=now)
-- `created_at` (DateTimeField) - Device registration timestamp (default=now)
+- `device_info` (JSONField) - Device information (`null=True`, `blank=True`)
+- `ip_address` (GenericIPAddressField) - IP address (`null=True`, `blank=True`)
+- `is_active` (BooleanField) - Active status (default=`True`)
+- `last_active_at` (DateTimeField) - Last active timestamp (default=timezone.now)
+- `created_at` (DateTimeField) - Device registration timestamp (default=timezone.now)
 
 **Constraints**:
 - Unique together: `(user, device_id)` - One device record per user per device
@@ -274,10 +274,10 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `user` (ForeignKey) - Owner user → User (related_name='sessions')
 - `device` (ForeignKey) - Associated device → UserDevice (related_name='sessions')
 - `refresh_token_hash` (CharField) - Hashed refresh token, unique, indexed (max_length=255, unique=True)
-- `is_valid` (BooleanField) - Session validity status (default=True)
+- `is_valid` (BooleanField) - Session validity status (default=`True`)
 - `expires_at` (DateTimeField) - Expiration timestamp, indexed
-- `last_used_at` (DateTimeField) - Last token usage timestamp (default=now)
-- `created_at` (DateTimeField) - Session creation timestamp (default=now)
+- `last_used_at` (DateTimeField) - Last token usage timestamp (default=timezone.now)
+- `created_at` (DateTimeField) - Session creation timestamp (default=timezone.now)
 
 **Relationships**:
 - Many-to-One: `user` → User
@@ -314,7 +314,7 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 **Complete Field List**:
 - `email` (OneToOneField) - Email → Email (primary_key=True, related_name='summary')
 - `summary` (TextField) - AI-generated summary text
-- `created_at` (DateTimeField) - Summary creation timestamp (default=now)
+- `created_at` (DateTimeField) - Summary creation timestamp (default=timezone.now)
 
 **Relationships**:
 - One-to-One: `email` → Email
@@ -330,10 +330,10 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `email` (ForeignKey) - Email → Email (related_name='highlights')
 - `text` (TextField) - Highlighted text
 - `color` (CharField) - Highlight color (max_length=50, default='yellow')
-- `note` (TextField) - User note (null=True, blank=True)
+- `note` (TextField) - User note (`null=True`, `blank=True`)
 - `selection_info` (JSONField) - Selection metadata (position, range, etc.)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Relationships**:
 - Many-to-One: `email` → Email
@@ -349,7 +349,7 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `email` (EmailField) - Email address, unique
 - `username` (CharField) - Requested username, unique (max_length=255, null=True, blank=True)
 - `location` (CharField) - User location (max_length=255, null=True, blank=True)
-- `created_at` (DateTimeField) - Waitlist entry timestamp (default=now)
+- `created_at` (DateTimeField) - Waitlist entry timestamp (default=timezone.now)
 
 **Relationships**: None (standalone model)
 
@@ -371,19 +371,19 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `url` (URLField) - Newsletter provider URL
 - `domain` (CharField) - Domain name (max_length=255)
 - `name` (CharField) - Provider name (max_length=255)
-- `description` (TextField) - Description (null=True, blank=True)
+- `description` (TextField) - Description (`null=True`, `blank=True`)
 - `author` (CharField) - Author name (max_length=255, null=True, blank=True)
-- `target_audience` (TextField) - Target audience description (null=True, blank=True)
-- `value_proposition` (TextField) - Value proposition (null=True, blank=True)
+- `target_audience` (TextField) - Target audience description (`null=True`, `blank=True`)
+- `value_proposition` (TextField) - Value proposition (`null=True`, `blank=True`)
 - `language` (CharField) - Language code (max_length=50, null=True, blank=True)
 - `content_frequency` (CharField) - Content frequency (max_length=100, null=True, blank=True)
 - `location` (CharField) - Location (max_length=255, null=True, blank=True)
 - `icon_url` (URLField) - Newsletter icon/logo URL (max_length=500, null=True, blank=True)
 - `normalized_domain` (CharField) - Normalized domain for search, indexed (max_length=255, null=True, blank=True)
 - `platform_name` (CharField) - Platform name (Substack, ConvertKit, etc.), indexed (max_length=50, null=True, blank=True)
-- `search_vector` (SearchVectorField) - Full-text search vector (null=True, blank=True)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `search_vector` (SearchVectorField) - Full-text search vector (`null=True`, `blank=True`)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Constraints**:
 - Unique constraint: `(domain, name)` (case-insensitive, when both not null)
@@ -413,7 +413,7 @@ The INBO Backend uses PostgreSQL as the primary database with Django ORM. This d
 - `id` (CharField) - Primary key (cuid format, max_length=255)
 - `name` (CharField) - Category name (max_length=255)
 - `level` (IntegerField) - Hierarchy level: 1, 2, 3, or 4
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
 
 **Constraints**:
 - Unique together: `(name, level)` - One category per name per level
@@ -498,11 +498,11 @@ All M2M tables have:
 
 **Complete Field List**:
 - `id` (UUIDField) - Primary key, auto-generated
-- `user` (ForeignKey) - Associated user → User (null=True, blank=True, related_name='verification_requests')
+- `user` (ForeignKey) - Associated user → User (`null=True`, `blank=True`, related_name='verification_requests')
 - `token` (CharField) - Hashed verification token (max_length=255)
-- `created_at` (DateTimeField) - Request creation timestamp, indexed (default=now)
+- `created_at` (DateTimeField) - Request creation timestamp, indexed (default=timezone.now)
 - `type` (CharField) - Verification type: EMAIL, FOGET_PASSWORD, OTP (max_length=20, default=EMAIL)
-- `email` (EmailField) - Email address for OTP requests without user (null=True, blank=True)
+- `email` (EmailField) - Email address for OTP requests without user (`null=True`, `blank=True`)
 
 **Constraints**:
 - Unique together: `(user, type)` - One active request per type per user
@@ -537,7 +537,7 @@ All M2M tables have:
 **Complete Field List**:
 - `email` (OneToOneField) - Email → Email (primary_key=True, related_name='summary')
 - `summary` (TextField) - AI-generated summary text
-- `created_at` (DateTimeField) - Summary creation timestamp (default=now)
+- `created_at` (DateTimeField) - Summary creation timestamp (default=timezone.now)
 
 **Relationships**:
 - One-to-One: `email` → Email
@@ -553,10 +553,10 @@ All M2M tables have:
 - `email` (ForeignKey) - Email → Email (related_name='highlights')
 - `text` (TextField) - Highlighted text
 - `color` (CharField) - Highlight color (max_length=50, default='yellow')
-- `note` (TextField) - User note (null=True, blank=True)
+- `note` (TextField) - User note (`null=True`, `blank=True`)
 - `selection_info` (JSONField) - Selection metadata (position, range, etc.)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Relationships**:
 - Many-to-One: `email` → Email
@@ -572,7 +572,7 @@ All M2M tables have:
 - `email` (EmailField) - Email address, unique
 - `username` (CharField) - Requested username, unique (max_length=255, null=True, blank=True)
 - `location` (CharField) - User location (max_length=255, null=True, blank=True)
-- `created_at` (DateTimeField) - Waitlist entry timestamp (default=now)
+- `created_at` (DateTimeField) - Waitlist entry timestamp (default=timezone.now)
 
 **Relationships**: None (standalone model)
 
@@ -589,17 +589,17 @@ All M2M tables have:
 - `user` (ForeignKey) - Owner user → User (related_name='newsletter_profiles', indexed)
 - `email` (EmailField) - Profile email, indexed (max_length=255)
 - `display_name` (CharField) - Display name (max_length=255, null=True, blank=True)
-- `bio` (TextField) - Bio/description (null=True, blank=True)
+- `bio` (TextField) - Bio/description (`null=True`, `blank=True`)
 - `avatar_url` (URLField) - Avatar URL (max_length=500, null=True, blank=True)
-- `preferred_categories` (JSONField) - Preferred category IDs list (default=list)
+- `preferred_categories` (JSONField) - Preferred category IDs list (default=`list`)
 - `preferred_frequency` (CharField) - Preferred frequency: daily, weekly, bi-weekly, monthly (max_length=50, default='weekly')
 - `preferred_language` (CharField) - Preferred language code (max_length=10, default='en')
 - `timezone_field` (CharField) - Timezone (db_column='timezone', max_length=100, null=True, blank=True)
-- `email_notifications` (BooleanField) - Email notifications enabled (default=True)
-- `push_notifications` (BooleanField) - Push notifications enabled (default=True)
-- `digest_enabled` (BooleanField) - Digest enabled (default=True)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `email_notifications` (BooleanField) - Email notifications enabled (default=`True`)
+- `push_notifications` (BooleanField) - Push notifications enabled (default=`True`)
+- `digest_enabled` (BooleanField) - Digest enabled (default=`True`)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Relationships**:
 - Many-to-One: `user` → User
@@ -615,10 +615,10 @@ All M2M tables have:
 - `id` (UUIDField) - Primary key, auto-generated
 - `profile` (ForeignKey) - Newsletter profile → NewsletterProfile (related_name='preferences')
 - `provider` (ForeignKey) - Newsletter provider → NewsletterProvider (from directory_app)
-- `is_subscribed` (BooleanField) - Subscription status (default=True)
-- `notification_enabled` (BooleanField) - Notification preference (default=True)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `is_subscribed` (BooleanField) - Subscription status (default=`True`)
+- `notification_enabled` (BooleanField) - Notification preference (default=`True`)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Relationships**:
 - Many-to-One: `profile` → NewsletterProfile
@@ -639,12 +639,12 @@ All M2M tables have:
 - `content` (TextField) - Full post content
 - `post_url` (URLField) - Original post URL (max_length=500)
 - `published_at` (DateTimeField) - Publication date, indexed
-- `is_read` (BooleanField) - Read status (default=False)
+- `is_read` (BooleanField) - Read status (default=`False`)
 - `reading_progress` (IntegerField) - Reading progress 0-100 (default=0)
 - `word_count` (IntegerField) - Word count (default=0)
 - `read_time_minutes` (IntegerField) - Estimated read time in minutes (default=0)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Relationships**:
 - Many-to-One: `preference` → NewsletterPreference
@@ -663,12 +663,12 @@ All M2M tables have:
 - `event_type` (CharField) - Event type: open, click, follow, unsubscribe, read_duration, share, dismiss, dwell_time (max_length=50, indexed)
 - `item_id` (CharField) - Item identifier (newsletter provider ID or post ID), indexed (max_length=255)
 - `item_type` (CharField) - Item type: newsletter, post, etc. (max_length=50, default='newsletter')
-- `value` (FloatField) - Event value for read_duration, dwell_time (null=True, blank=True)
-- `metadata` (JSONField) - Additional event data (default=dict)
+- `value` (FloatField) - Event value for read_duration, dwell_time (`null=True`, `blank=True`)
+- `metadata` (JSONField) - Additional event data (default=`dict`)
 - `device_type` (CharField) - Device type (max_length=50, null=True, blank=True)
 - `app_section` (CharField) - App section: home, category, search, etc. (max_length=100, null=True, blank=True)
 - `session_id` (CharField) - Session identifier, indexed (max_length=255, null=True, blank=True)
-- `created_at` (DateTimeField) - Event timestamp, indexed (default=now)
+- `created_at` (DateTimeField) - Event timestamp, indexed (default=timezone.now)
 
 **Relationships**:
 - Many-to-One: `user` → User
@@ -687,20 +687,20 @@ All M2M tables have:
 **Complete Field List**:
 - `id` (UUIDField) - Primary key, auto-generated
 - `user` (OneToOneField) - User → User (related_name='recommendation_features', indexed)
-- `preferred_categories` (JSONField) - Preferred category IDs list (default=list)
-- `preferred_tags` (JSONField) - Preferred tag IDs list (default=list)
-- `preferred_languages` (JSONField) - Preferred languages list: ['en', 'es', etc.] (default=list)
-- `engagement_vector` (JSONField) - Engagement vector: {category_id: engagement_score} (default=dict)
+- `preferred_categories` (JSONField) - Preferred category IDs list (default=`list`)
+- `preferred_tags` (JSONField) - Preferred tag IDs list (default=`list`)
+- `preferred_languages` (JSONField) - Preferred languages list: `['en', 'es', etc.]` (default=`list`)
+- `engagement_vector` (JSONField) - Engagement vector: `{category_id: engagement_score}` (default=`dict`)
 - `total_opens` (IntegerField) - Total opens count (default=0)
 - `total_clicks` (IntegerField) - Total clicks count (default=0)
 - `total_follows` (IntegerField) - Total follows count (default=0)
 - `avg_read_duration` (FloatField) - Average read duration in seconds (default=0.0)
-- `signup_ts` (DateTimeField) - Signup timestamp (null=True, blank=True)
-- `last_active_ts` (DateTimeField) - Last active timestamp, indexed (null=True, blank=True)
+- `signup_ts` (DateTimeField) - Signup timestamp (`null=True`, `blank=True`)
+- `last_active_ts` (DateTimeField) - Last active timestamp, indexed (`null=True`, `blank=True`)
 - `locale` (CharField) - User locale (max_length=10, default='en')
 - `device_type` (CharField) - Device type (max_length=50, null=True, blank=True)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Relationships**:
 - One-to-One: `user` → User
@@ -715,25 +715,25 @@ All M2M tables have:
 - `id` (UUIDField) - Primary key, auto-generated
 - `item_id` (CharField) - Item identifier (newsletter provider ID), unique, indexed (max_length=255, unique=True)
 - `item_type` (CharField) - Item type: newsletter (max_length=50, default='newsletter')
-- `newsletter_provider` (ForeignKey) - Newsletter provider → NewsletterProvider (null=True, blank=True, related_name='recommendation_features', to_field='id', indexed)
-- `topics_embedding` (JSONField) - 512d embedding vector (null=True, blank=True)
-- `description_embedding` (JSONField) - Description embedding vector (null=True, blank=True)
-- `published_ts` (DateTimeField) - Publication timestamp, indexed (null=True, blank=True)
-- `tags` (JSONField) - Tag IDs list (default=list)
-- `categories` (JSONField) - Category IDs list (default=list)
+- `newsletter_provider` (ForeignKey) - Newsletter provider → NewsletterProvider (`null=True`, `blank=True`, related_name='recommendation_features', to_field='id', indexed)
+- `topics_embedding` (JSONField) - 512d embedding vector (`null=True`, `blank=True`)
+- `description_embedding` (JSONField) - Description embedding vector (`null=True`, `blank=True`)
+- `published_ts` (DateTimeField) - Publication timestamp, indexed (`null=True`, `blank=True`)
+- `tags` (JSONField) - Tag IDs list (default=`list`)
+- `categories` (JSONField) - Category IDs list (default=`list`)
 - `language` (CharField) - Language code (max_length=10, null=True, blank=True)
 - `avg_open_rate` (FloatField) - Average open rate 0-1 (default=0.0)
 - `avg_click_rate` (FloatField) - Average click rate 0-1 (default=0.0)
 - `total_subscribers` (IntegerField) - Total subscribers count (default=0)
 - `total_opens` (IntegerField) - Total opens count (default=0)
 - `total_clicks` (IntegerField) - Total clicks count (default=0)
-- `length_minutes` (IntegerField) - Average read time in minutes (null=True, blank=True)
-- `paid_flag` (BooleanField) - Paid newsletter flag (default=False)
+- `length_minutes` (IntegerField) - Average read time in minutes (`null=True`, `blank=True`)
+- `paid_flag` (BooleanField) - Paid newsletter flag (default=`False`)
 - `provider_reputation_score` (FloatField) - Provider reputation score 0-1 (default=0.0)
 - `freshness_boost` (FloatField) - Freshness boost 0-1 (default=1.0)
-- `created_at` (DateTimeField) - Creation timestamp, indexed (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
-- `embedding_updated_at` (DateTimeField) - Embedding update timestamp (null=True, blank=True)
+- `created_at` (DateTimeField) - Creation timestamp, indexed (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
+- `embedding_updated_at` (DateTimeField) - Embedding update timestamp (`null=True`, `blank=True`)
 
 **Constraints**:
 - `avg_open_rate` must be between 0 and 1
@@ -773,13 +773,13 @@ All M2M tables have:
 - `similarity_score` (FloatField) - Similarity score component (default=0.0)
 - `popularity_score` (FloatField) - Popularity score component (default=0.0)
 - `freshness_score` (FloatField) - Freshness score component (default=0.0)
-- `reason` (TextField) - Human-readable explanation (null=True, blank=True)
-- `explanation_metadata` (JSONField) - Detailed explanation data (default=dict)
+- `reason` (TextField) - Human-readable explanation (`null=True`, `blank=True`)
+- `explanation_metadata` (JSONField) - Detailed explanation data (default=`dict`)
 - `model_version` (CharField) - Model version identifier (max_length=50, default='v1')
 - `recommendation_mode` (CharField) - Mode: personalized, trending, category, hybrid (max_length=50, default='hybrid')
-- `context_features` (JSONField) - Context features: time_of_day, day_of_week, etc. (default=dict)
-- `created_at` (DateTimeField) - Creation timestamp, indexed (default=now)
-- `expires_at` (DateTimeField) - Cache expiration timestamp, indexed (null=True, blank=True)
+- `context_features` (JSONField) - Context features: time_of_day, day_of_week, etc. (default=`dict`)
+- `created_at` (DateTimeField) - Creation timestamp, indexed (default=timezone.now)
+- `expires_at` (DateTimeField) - Cache expiration timestamp, indexed (`null=True`, `blank=True`)
 
 **Constraints**:
 - Unique together: `(user, item_id, recommendation_mode, created_at)` - One recommendation per user/item/mode/time
@@ -803,13 +803,13 @@ All M2M tables have:
 - `user` (ForeignKey) - User → User (related_name='recommendation_explanations', indexed)
 - `item_id` (CharField) - Item identifier, indexed (max_length=255)
 - `explanation_text` (TextField) - Human-readable explanation
-- `contributing_factors` (JSONField) - Detailed breakdown dictionary (default=dict)
-- `similar_items` (JSONField) - Items user interacted with that led to this (default=list)
-- `category_match` (JSONField) - Category preferences match (default=dict)
-- `tag_match` (JSONField) - Tag preferences match (default=dict)
+- `contributing_factors` (JSONField) - Detailed breakdown dictionary (default=`dict`)
+- `similar_items` (JSONField) - Items user interacted with that led to this (default=`list`)
+- `category_match` (JSONField) - Category preferences match (default=`dict`)
+- `tag_match` (JSONField) - Tag preferences match (default=`dict`)
 - `model_version` (CharField) - Model version (max_length=50)
 - `recommendation_mode` (CharField) - Recommendation mode (max_length=50)
-- `created_at` (DateTimeField) - Creation timestamp, indexed (default=now)
+- `created_at` (DateTimeField) - Creation timestamp, indexed (default=timezone.now)
 
 **Relationships**:
 - Many-to-One: `user` → User
@@ -831,11 +831,11 @@ All M2M tables have:
 - `email` (EmailField) - Gmail email address
 - `access_token` (TextField) - Encrypted access token
 - `refresh_token` (TextField) - Encrypted refresh token
-- `expiry` (DateTimeField) - Token expiry timestamp (null=True, blank=True)
-- `needs_reauth` (BooleanField) - Re-authentication needed (default=False)
-- `last_sync_time` (DateTimeField) - Last sync timestamp (null=True, blank=True)
-- `created_at` (DateTimeField) - Connection timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `expiry` (DateTimeField) - Token expiry timestamp (`null=True`, `blank=True`)
+- `needs_reauth` (BooleanField) - Re-authentication needed (default=`False`)
+- `last_sync_time` (DateTimeField) - Last sync timestamp (`null=True`, `blank=True`)
+- `created_at` (DateTimeField) - Connection timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Constraints**:
 - Unique together: `(user, email)` - One Gmail account per email per user
@@ -856,7 +856,7 @@ All M2M tables have:
 - `gmail_account` (ForeignKey) - Gmail account → GmailAccount (related_name='allowed_senders')
 - `sender_email` (EmailField) - Allowed sender email
 - `sender_name` (CharField) - Sender name (max_length=255)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
 
 **Constraints**:
 - Unique together: `(gmail_account, sender_email)` - One record per sender per account
@@ -874,9 +874,9 @@ All M2M tables have:
 - `id` (CharField) - Primary key (default='main', max_length=50)
 - `last_offset` (IntegerField) - Last sync offset (default=0)
 - `batch_size` (IntegerField) - Batch size for syncing (default=500)
-- `last_run_at` (DateTimeField) - Last sync run timestamp (default=now)
-- `is_running` (BooleanField) - Sync in progress flag (default=False)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `last_run_at` (DateTimeField) - Last sync run timestamp (default=timezone.now)
+- `is_running` (BooleanField) - Sync in progress flag (default=`False`)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Relationships**: None (singleton model)
 
@@ -891,13 +891,13 @@ All M2M tables have:
 - `user` (ForeignKey) - User → User (related_name='integrations')
 - `type` (CharField) - Integration type: POCKET, NOTION, EVERNOTE (max_length=20)
 - `access_token` (TextField) - Encrypted access token
-- `refresh_token` (TextField) - Encrypted refresh token (null=True, blank=True)
-- `token_expiry` (DateTimeField) - Token expiry timestamp (null=True, blank=True)
+- `refresh_token` (TextField) - Encrypted refresh token (`null=True`, `blank=True`)
+- `token_expiry` (DateTimeField) - Token expiry timestamp (`null=True`, `blank=True`)
 - `username` (CharField) - Service username (max_length=255, null=True, blank=True)
-- `connected_at` (DateTimeField) - Connection timestamp (default=now)
-- `last_used_at` (DateTimeField) - Last usage timestamp (null=True, blank=True)
-- `is_active` (BooleanField) - Active status (default=True)
-- `metadata` (JSONField) - Additional metadata (null=True, blank=True)
+- `connected_at` (DateTimeField) - Connection timestamp (default=timezone.now)
+- `last_used_at` (DateTimeField) - Last usage timestamp (`null=True`, `blank=True`)
+- `is_active` (BooleanField) - Active status (default=`True`)
+- `metadata` (JSONField) - Additional metadata (`null=True`, `blank=True`)
 
 **Constraints**:
 - Unique together: `(user, type)` - One integration per type per user
@@ -917,9 +917,9 @@ All M2M tables have:
 - `user` (ForeignKey) - User → User (related_name='auth_states')
 - `service_type` (CharField) - Service type: POCKET, NOTION, EVERNOTE (max_length=20)
 - `request_token` (CharField) - OAuth request token (max_length=255, null=True, blank=True)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
 - `expires_at` (DateTimeField) - Expiration timestamp
-- `is_used` (BooleanField) - State used flag (default=False)
+- `is_used` (BooleanField) - State used flag (default=`False`)
 
 **Constraints**:
 - Unique together: `(user, service_type)` - One active state per service per user
@@ -941,9 +941,9 @@ All M2M tables have:
 - `session_id` (CharField) - Session identifier, indexed (max_length=255, null=True, blank=True)
 - `page` (CharField) - Page name: home, search, category, reading, profile (max_length=100, indexed)
 - `intent` (CharField) - User intent: discovery, task_driven, consumption (max_length=50)
-- `sections` (JSONField) - List of section types rendered (default=list)
-- `context` (JSONField) - Context metadata: time_of_day, device, location (default=dict)
-- `created_at` (DateTimeField) - Render timestamp, indexed (default=now)
+- `sections` (JSONField) - List of section types rendered (default=`list`)
+- `context` (JSONField) - Context metadata: time_of_day, device, location (default=`dict`)
+- `created_at` (DateTimeField) - Render timestamp, indexed (default=timezone.now)
 
 **Relationships**:
 - Many-to-One: `user` → User
@@ -964,15 +964,15 @@ All M2M tables have:
 - `id` (UUIDField) - Primary key, auto-generated
 - `user` (ForeignKey) - User → User (related_name='experience_interactions', indexed)
 - `session_id` (CharField) - Session identifier, indexed (max_length=255, null=True, blank=True)
-- `render` (ForeignKey) - Experience render → ExperienceRender (null=True, blank=True, related_name='interactions', on_delete=SET_NULL)
+- `render` (ForeignKey) - Experience render → ExperienceRender (`null=True`, `blank=True`, related_name='interactions', on_delete=SET_NULL)
 - `interaction_type` (CharField) - Type: view, click, scroll, dwell, dismiss (max_length=50, indexed)
 - `section_type` (CharField) - Section type (max_length=100, null=True, blank=True)
 - `item_id` (CharField) - Item identifier, indexed (max_length=255, null=True, blank=True)
-- `position` (IntegerField) - Position in section list (null=True, blank=True)
-- `dwell_time` (FloatField) - Dwell time in seconds (null=True, blank=True)
-- `scroll_depth` (FloatField) - Scroll depth percentage (null=True, blank=True)
-- `metadata` (JSONField) - Additional interaction metadata (default=dict)
-- `created_at` (DateTimeField) - Interaction timestamp, indexed (default=now)
+- `position` (IntegerField) - Position in section list (`null=True`, `blank=True`)
+- `dwell_time` (FloatField) - Dwell time in seconds (`null=True`, `blank=True`)
+- `scroll_depth` (FloatField) - Scroll depth percentage (`null=True`, `blank=True`)
+- `metadata` (JSONField) - Additional interaction metadata (default=`dict`)
+- `created_at` (DateTimeField) - Interaction timestamp, indexed (default=timezone.now)
 
 **Relationships**:
 - Many-to-One: `user` → User
@@ -1004,8 +1004,8 @@ All M2M tables have:
 - `avg_dwell_time` (FloatField) - Average dwell time in seconds (default=0.0)
 - `avg_position` (FloatField) - Average position when clicked (default=0.0)
 - `engagement_score` (FloatField) - Calculated engagement score, indexed (default=0.0)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Constraints**:
 - Unique together: `(section_type, page, period_start, period_end)` - One metric per section/page/period
@@ -1031,10 +1031,10 @@ All M2M tables have:
 - `price` (MoneyField) - Price (max_digits=10, decimal_places=2, default_currency='USD')
 - `currency` (CharField) - Currency code (max_length=3, default='USD')
 - `billing_interval` (CharField) - Billing interval: MONTHLY or ANNUAL (max_length=20)
-- `features` (JSONField) - Plan features dictionary (default=dict)
-- `is_active` (BooleanField) - Active status (default=True)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `features` (JSONField) - Plan features dictionary (default=`dict`)
+- `is_active` (BooleanField) - Active status (default=`True`)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 - `stripe_product_id` (CharField) - Stripe product ID (max_length=255, null=True, blank=True)
 - `stripe_price_id` (CharField) - Stripe price ID (max_length=255, null=True, blank=True)
 - `storage_limit` (BigIntegerField) - Storage limit in bytes (default=268435456 = 256 MB)
@@ -1060,10 +1060,10 @@ All M2M tables have:
 - `status` (CharField) - Status: FREE, PENDING, ACTIVE, PAST_DUE, CANCELED, TRIALING (max_length=20, default=FREE)
 - `current_period_start` (DateTimeField) - Current billing period start
 - `current_period_end` (DateTimeField) - Current billing period end
-- `cancel_at_period_end` (BooleanField) - Cancel at period end flag (default=False)
-- `canceled_at` (DateTimeField) - Cancellation timestamp (null=True, blank=True)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `cancel_at_period_end` (BooleanField) - Cancel at period end flag (default=`False`)
+- `canceled_at` (DateTimeField) - Cancellation timestamp (`null=True`, `blank=True`)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **History Tracking**: Uses `simple_history`
 
@@ -1086,12 +1086,12 @@ All M2M tables have:
 - `currency` (CharField) - Currency code (max_length=3, default='USD')
 - `status` (CharField) - Status: PENDING, SUCCEEDED, FAILED, REFUNDED (max_length=20, default=PENDING)
 - `stripe_payment_intent_id` (CharField) - Stripe payment intent ID (max_length=255, null=True, blank=True)
-- `subscription` (ForeignKey) - Associated subscription → Subscription (null=True, blank=True, related_name='transactions', on_delete=SET_NULL)
-- `description` (TextField) - Transaction description (null=True, blank=True)
+- `subscription` (ForeignKey) - Associated subscription → Subscription (`null=True`, `blank=True`, related_name='transactions', on_delete=SET_NULL)
+- `description` (TextField) - Transaction description (`null=True`, `blank=True`)
 - `payment_method` (CharField) - Payment method (max_length=255, null=True, blank=True)
-- `metadata` (JSONField) - Additional metadata (null=True, blank=True)
-- `created_at` (DateTimeField) - Creation timestamp (default=now)
-- `updated_at` (DateTimeField) - Last update timestamp (auto_now=True)
+- `metadata` (JSONField) - Additional metadata (`null=True`, `blank=True`)
+- `created_at` (DateTimeField) - Creation timestamp (default=timezone.now)
+- `updated_at` (DateTimeField) - Last update timestamp (auto_now=`True`)
 
 **Relationships**:
 - Many-to-One: `user` → User
@@ -1107,8 +1107,8 @@ All M2M tables have:
 - `id` (UUIDField) - Primary key, auto-generated
 - `subscription` (ForeignKey) - Subscription → Subscription (related_name='subscription_events')
 - `event_type` (CharField) - Event type: CREATED, RENEWED, CANCELED, PAYMENT_FAILED, PLAN_CHANGED, TRIAL_STARTED, TRIAL_ENDED (max_length=30)
-- `metadata` (JSONField) - Event metadata (null=True, blank=True)
-- `created_at` (DateTimeField) - Event timestamp (default=now)
+- `metadata` (JSONField) - Event metadata (`null=True`, `blank=True`)
+- `created_at` (DateTimeField) - Event timestamp (default=timezone.now)
 
 **Relationships**:
 - Many-to-One: `subscription` → Subscription
@@ -1123,16 +1123,16 @@ All M2M tables have:
 
 **Complete Field List**:
 - `id` (UUIDField) - Primary key, auto-generated
-- `user` (ForeignKey) - User → User (null=True, blank=True, related_name='deletion_requests')
-- `email` (EmailField) - Email used during signup, indexed (null=True, blank=True)
-- `reason` (TextField) - Deletion reason (null=True, blank=True)
+- `user` (ForeignKey) - User → User (`null=True`, `blank=True`, related_name='deletion_requests')
+- `email` (EmailField) - Email used during signup, indexed (`null=True`, `blank=True`)
+- `reason` (TextField) - Deletion reason (`null=True`, `blank=True`)
 - `status` (CharField) - Status: PENDING, SCHEDULED, PROCESSING, COMPLETED, CANCELLED, FAILED (max_length=20, default=PENDING, indexed)
-- `requested_at` (DateTimeField) - Request timestamp, indexed (default=now)
+- `requested_at` (DateTimeField) - Request timestamp, indexed (default=timezone.now)
 - `scheduled_deletion_at` (DateTimeField) - Scheduled deletion time (30 days from request), indexed
-- `processed_at` (DateTimeField) - Processing completion timestamp (null=True, blank=True)
-- `cancelled_at` (DateTimeField) - Cancellation timestamp (null=True, blank=True)
-- `ip_address` (GenericIPAddressField) - Request IP address (null=True, blank=True)
-- `user_agent` (TextField) - User agent string (null=True, blank=True)
+- `processed_at` (DateTimeField) - Processing completion timestamp (`null=True`, `blank=True`)
+- `cancelled_at` (DateTimeField) - Cancellation timestamp (`null=True`, `blank=True`)
+- `ip_address` (GenericIPAddressField) - Request IP address (`null=True`, `blank=True`)
+- `user_agent` (TextField) - User agent string (`null=True`, `blank=True`)
 
 **Constraints**:
 - Unique together: `(email, status)` - One active deletion request per email
@@ -1368,6 +1368,7 @@ unread_count = Email.objects.filter(
 ### Newsletter Queries
 
 ```python
+from django.db.models import Count
 from core.models import Newsletter, NewsletterEmail
 
 # Get user's newsletters
@@ -1378,20 +1379,21 @@ newsletters = Newsletter.objects.filter(
 
 # Get newsletter with email count
 newsletter = Newsletter.objects.annotate(
-    email_count=models.Count('emails')
+    email_count=Count('emails')
 ).get(id=newsletter_id)
 ```
 
 ### Folder Queries
 
 ```python
+from django.db.models import Count
 from core.models import Folder
 
 # Get folders with email counts
 folders = Folder.objects.filter(
     user=user
 ).annotate(
-    email_count=models.Count('emails')
+    email_count=Count('emails')
 ).order_by('name')
 
 # Search folder by name
@@ -1404,14 +1406,14 @@ folders = Folder.objects.filter(
 ### Aggregation Queries
 
 ```python
-from django.db.models import Count, Sum, Avg
+from django.db.models import Count, Sum, Avg, Q
 from core.models import Email, ReadingStats
 
 # Get email statistics
 stats = Email.objects.filter(user=user).aggregate(
     total=Count('id'),
-    unread=Count('id', filter=models.Q(is_read=False)),
-    favorites=Count('id', filter=models.Q(is_favorite=True))
+    unread=Count('id', filter=Q(is_read=False)),
+    favorites=Count('id', filter=Q(is_favorite=True))
 )
 
 # Get reading statistics
@@ -1585,7 +1587,7 @@ Email.objects.filter(user=user, is_deleted=True).delete()
 - `db_index=True` - Creates database index
 - `db_column='name'` - Custom column name
 - `related_name='name'` - Reverse relation name
-- `on_delete=CASCADE` - Deletion behavior (CASCADE, SET_NULL, PROTECT, etc.)
+- `on_delete` - Deletion behavior: CASCADE, SET_NULL, PROTECT, etc.
 
 ## Complete Model Inventory
 
