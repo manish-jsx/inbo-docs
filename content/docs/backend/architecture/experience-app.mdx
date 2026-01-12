@@ -19,7 +19,7 @@ graph TB
     end
 
     subgraph "Experience API"
-        ExperienceAPI[GET /api/experience/page/{page}/<br/>POST /api/experience/interactions/]
+        ExperienceAPI["GET /api/experience/page/page/<br/>POST /api/experience/interactions/"]
         ExperienceViewSet[ExperienceViewSet]
     end
 
@@ -592,7 +592,7 @@ recent_items = redis_state.get_user_recent_items(user_id, 20)
 ### Get Page Experience
 
 ```
-GET /api/api/experience/page/{page}/
+GET /api/experience/page/{page}/
 ```
 
 **Query Parameters**:
@@ -638,7 +638,7 @@ GET /api/api/experience/page/{page}/
 ### Track Interaction
 
 ```
-POST /api/api/experience/interactions/
+POST /api/experience/interactions/
 ```
 
 **Request Body**:

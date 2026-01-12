@@ -18,7 +18,7 @@ graph TB
         EmailModel[Email<br/>User Emails]
         NewsModel[Newsletter<br/>User Subscriptions]
         PostModel[NewsletterPost<br/>Publication History]
-        InboxModel[InboxEmail<br/>@inbo.me Addresses]
+        InboxModel[InboxEmail<br/>inbo.me Addresses]
     end
 
     subgraph "🔄 Indexing Pipeline"
@@ -48,7 +48,7 @@ graph TB
     end
 
     subgraph "💾 Redis Cache Layer"
-        Redis[(Redis Cache<br/>Search Results<br/>TTL: 5 minutes<br/>60-80% hit rate)]
+        Redis[("Redis Cache<br/>Search Results<br/>TTL: 5 minutes<br/>60-80 percent hit rate")]
     end
 
     subgraph "📤 Search Results"
@@ -80,11 +80,11 @@ graph TB
     CacheMgr -->|2. Check Cache Key| CacheDecision
     
     %% Cache Hit Path (Fast Path - 60-80% of queries)
-    CacheDecision -->|✅ Cache Hit<br/>~10ms response| Redis
+    CacheDecision -->|Cache Hit<br/>10ms response| Redis
     Redis -->|3a. Return Cached Results| API
     
     %% Cache Miss Path (Slow Path - 20-40% of queries)
-    CacheDecision -->|❌ Cache Miss| IndexClient
+    CacheDecision -->|Cache Miss| IndexClient
     IndexClient -->|4. Search Query| Bonsai
     
     %% Query Execution
@@ -287,10 +287,10 @@ sequenceDiagram
     Client->>API: GET /api/search/unified/?q=query
     API->>Cache: Check cache (MD5 hash of query)
     
-    alt Cache Hit (60-80% of queries)
-        Cache-->>API: Return cached results (~10ms)
+    alt Cache Hit (60-80 percent of queries)
+        Cache-->>API: Return cached results (10ms)
         API-->>Client: Search results
-    else Cache Miss (20-40% of queries)
+    else Cache Miss (20-40 percent of queries)
         API->>OpenSearch: Build search query
         OpenSearch->>Bonsai: Execute search query
         Bonsai-->>OpenSearch: Search results
@@ -314,12 +314,12 @@ sequenceDiagram
 
 ### 3. Performance Characteristics
 
-#### Cache Hit Path (60-80% of queries)
-- **Response Time**: < 10ms
+#### Cache Hit Path (60-80 percent of queries)
+- **Response Time**: Less than 10ms
 - **Source**: Redis cache
 - **No External Calls**: Bypasses Bonsai.io
 
-#### Cache Miss Path (20-40% of queries)
+#### Cache Miss Path (20-40 percent of queries)
 - **Response Time**: 50-200ms (depending on query complexity)
 - **Source**: Bonsai.io Elasticsearch
 - **Cache Storage**: Results cached for future requests
@@ -510,11 +510,11 @@ python manage.py rebuild_search_index --delete
 
 ### Key Metrics
 
-- **Cache Hit Rate**: 60-80% (target: >70%)
+- **Cache Hit Rate**: 60-80 percent (target: greater than 70 percent)
 - **Average Response Time**: 
   - Cache hits: < 10ms
   - Cache misses: 50-200ms
-- **Bonsai.io API Calls**: Reduced by 60-80% via caching
+- **Bonsai.io API Calls**: Reduced by 60-80 percent via caching
 - **Index Size**: Monitor growth per index
 - **Query Performance**: Track slow queries
 
