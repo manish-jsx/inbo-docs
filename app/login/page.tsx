@@ -10,11 +10,19 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (loading || submitted) {
+      return;
+    }
+
     setError('');
     setLoading(true);
+    setSubmitted(true);
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -23,9 +31,20 @@ function LoginForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password }),
+        credentials: 'include', // Ensure cookies are sent
       });
 
-      const data = await response.json();
+      // Check if response is ok before trying to parse JSON
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        console.error('[Login] Failed to parse response:', parseError);
+        setError('Invalid response from server. Please try again.');
+        setLoading(false);
+        setSubmitted(false);
+        return;
+      }
 
       if (response.ok) {
         // Redirect to the original page or home
@@ -33,12 +52,15 @@ function LoginForm() {
         router.push(redirect);
         router.refresh();
       } else {
-        setError(data.error || 'Invalid credentials');
+        setError(data.error || `Authentication failed (${response.status}). Please check your credentials.`);
+        setLoading(false);
+        setSubmitted(false);
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
-    } finally {
+      console.error('[Login] Request error:', err);
+      setError('An error occurred. Please check your connection and try again.');
       setLoading(false);
+      setSubmitted(false);
     }
   };
 
